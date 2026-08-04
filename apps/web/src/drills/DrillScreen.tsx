@@ -45,6 +45,14 @@ export default function DrillScreen({
   const remaining = Math.max(0, config.max_speak_s - elapsed);
   const timeLow = remaining <= config.max_speak_s * 0.2;
 
+  // powrót do ekranu głównego: przerywa nagrywanie, nic nie wysyła
+  const exitSession = useCallback(() => {
+    stoppedRef.current = true;
+    recorder.onVadFrame = null;
+    recorder.stop();
+    onSessionEnd("aborted");
+  }, [recorder, onSessionEnd]);
+
   const stopAndSubmit = useCallback(async () => {
     if (stoppedRef.current) return;
     stoppedRef.current = true;
@@ -186,6 +194,7 @@ export default function DrillScreen({
   if (phase === "process") {
     return (
       <div className="flex min-h-screen items-center justify-center">
+        <ExitButton onClick={exitSession} />
         <p className="text-2xl text-neutral-400">Processing...</p>
       </div>
     );
@@ -197,6 +206,7 @@ export default function DrillScreen({
     const fatigue = m.fatigue_detected === true;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+        <ExitButton onClick={exitSession} />
         <div className="grid grid-cols-3 gap-12 text-center">
           <Stat label="time to start" value={m.ttfw != null ? `${m.ttfw.toFixed(2)} s` : "—"} />
           <Stat
@@ -269,6 +279,8 @@ export default function DrillScreen({
         timeLow ? "bg-red-950" : "bg-neutral-950"
       }`}
     >
+      <ExitButton onClick={exitSession} />
+
       {config.show_timer && (
         <div className="mb-12 font-mono text-7xl tabular-nums text-neutral-100">
           {remaining.toFixed(0)}
@@ -300,6 +312,19 @@ export default function DrillScreen({
         ■
       </button>
     </div>
+  );
+}
+
+function ExitButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="fixed left-6 top-6 rounded border border-neutral-800 px-3 py-1 text-lg text-neutral-500 hover:border-neutral-500 hover:text-neutral-300"
+      onClick={onClick}
+      aria-label="Back to start"
+      title="Back to start"
+    >
+      ✕
+    </button>
   );
 }
 

@@ -63,11 +63,17 @@ export default function App() {
   }, []);
 
   const endSession = useCallback(
-    async (sessionId: number) => {
+    async (sessionId: number, reason: "completed" | "fatigue" | "aborted") => {
       setView({ name: "loading" });
       try {
         await recorderRef.current?.destroy();
         recorderRef.current = null;
+        if (reason === "aborted") {
+          // powrót do ekranu głównego bez podsumowania; sesję domykamy w tle
+          api.endSession(sessionId).catch(() => {});
+          setView({ name: "start" });
+          return;
+        }
         const { summary, fatigue_detected } = await api.endSession(sessionId);
         setView({ name: "summary", summary, fatigue: fatigue_detected });
       } catch (e) {
@@ -121,7 +127,7 @@ export default function App() {
           vadThreshold={view.vadThreshold}
           recorder={view.recorder}
           vad={view.vad}
-          onSessionEnd={() => endSession(view.sessionId)}
+          onSessionEnd={(reason) => endSession(view.sessionId, reason)}
         />
       );
     case "summary":
