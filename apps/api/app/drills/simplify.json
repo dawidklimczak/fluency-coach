@@ -1,0 +1,16 @@
+{
+  "id": "simplify",
+  "name": "Simplify",
+  "stimulus": "text",
+  "prep_time_s": 5,
+  "min_speak_s": 5,
+  "max_speak_s": 20,
+  "auto_stop_silence_s": 2.5,
+  "rounds": 1,
+  "attempts_per_session": 8,
+  "primary_metrics": ["subordination_index", "word_frequency_profile"],
+  "target": {},
+  "llm_eval": true,
+  "show_timer": true,
+  "show_transcript_during": false
+}

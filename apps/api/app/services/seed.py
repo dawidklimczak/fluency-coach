@@ -28,9 +28,18 @@ def ensure_seeded(db: Session) -> None:
         db.add(User(id=1))
 
     data = seed_file()
-    existing = {row[0] for row in db.query(Task.id).all()}
+    existing = {t.id: t for t in db.query(Task).all()}
     for t in data.get("tasks", []):
-        if t["id"] in existing:
+        row = existing.get(t["id"])
+        if row is not None:
+            # upsert: plik seed jest źródłem prawdy dla zadań source=seed
+            if row.source == "seed":
+                row.module = t["module"]
+                row.difficulty = t["difficulty"]
+                row.target_structure = t.get("target_structure")
+                row.prompt_text = t["prompt_text"]
+                row.payload = t.get("payload")
+                row.tags = t.get("tags")
             continue
         db.add(
             Task(

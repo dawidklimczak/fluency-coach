@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
-from .routers import attempts, calibrate, sessions, stats
+from .routers import attempts, calibrate, sessions, stats, tasks
+from .services.retention import cleanup_old_audio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -13,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    cleanup_old_audio()
     yield
 
 
@@ -29,6 +31,7 @@ app.include_router(sessions.router)
 app.include_router(attempts.router)
 app.include_router(calibrate.router)
 app.include_router(stats.router)
+app.include_router(tasks.router)
 
 
 @app.get("/api/health")

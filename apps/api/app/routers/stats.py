@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Attempt, TrainingSession
+from ..models import Attempt, Observation, TrainingSession, now_iso
+from ..services import llm
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -116,3 +117,55 @@ def structures_heatmap(db: Session = Depends(get_db)):
         )
 
     return {"baseline_ttfw": baseline_ttfw, "structures": rows}
+
+
+OBSERVATION_INTERVAL_DAYS = 7
+OBSERVATION_LOOKBACK_DAYS = 14
+MAX_OBSERVATION_TRANSCRIPT_CHARS = 24000
+
+
+@router.get("/observations")
+def observations(db: Session = Depends(get_db)):
+    """Obserwacje tygodniowe (spec 5.5). Generowane najwyżej raz na 7 dni,
+    z transkrypcji z ostatnich 14 dni; nigdy w trakcie sesji."""
+    latest = db.query(Observation).order_by(Observation.id.desc()).first()
+    week_ago = (
+        datetime.now(timezone.utc) - timedelta(days=OBSERVATION_INTERVAL_DAYS)
+    ).isoformat()
+    stale = latest is None or latest.created_at < week_ago
+
+    if stale and llm.llm_enabled():
+        since = (
+            datetime.now(timezone.utc) - timedelta(days=OBSERVATION_LOOKBACK_DAYS)
+        ).isoformat()
+        transcripts = [
+            t[0]
+            for t in db.query(Attempt.transcript)
+            .filter(
+                Attempt.status == "done",
+                Attempt.created_at >= since,
+                Attempt.transcript.isnot(None),
+            )
+            .order_by(Attempt.id)
+            .all()
+        ]
+        if transcripts:
+            joined = "\n---\n".join(transcripts)[:MAX_OBSERVATION_TRANSCRIPT_CHARS]
+            result = llm.complete_json(
+                "observations", {"transcripts": joined}, llm.ObservationsResult
+            )
+            if result is not None:
+                latest = Observation(
+                    period_start=since,
+                    period_end=now_iso(),
+                    items=[i.model_dump() for i in result.items],
+                )
+                db.add(latest)
+                db.commit()
+                stale = False
+
+    return {
+        "generated_at": latest.created_at if latest else None,
+        "stale": stale,
+        "items": latest.items or [] if latest else [],
+    }

@@ -1,0 +1,16 @@
+{
+  "id": "paraphrase",
+  "name": "Paraphrase",
+  "stimulus": "text",
+  "prep_time_s": 0,
+  "min_speak_s": 3,
+  "max_speak_s": 15,
+  "auto_stop_silence_s": 2.5,
+  "rounds": 3,
+  "attempts_per_session": 4,
+  "primary_metrics": ["lexical_distance_min", "ttfw"],
+  "target": {},
+  "llm_eval": true,
+  "show_timer": true,
+  "show_transcript_during": false
+}

@@ -4,7 +4,7 @@ import { Recorder } from "../audio/recorder";
 import { BrowserVad } from "../audio/vad";
 import { encodeWav, SAMPLE_RATE } from "../audio/wav";
 
-type Phase = "present" | "record" | "process" | "feedback" | "error";
+type Phase = "prep" | "listen" | "record" | "process" | "feedback" | "error";
 
 interface Props {
   sessionId: number;
@@ -16,6 +16,56 @@ interface Props {
   onSessionEnd: (reason: "completed" | "fatigue" | "aborted") => void;
 }
 
+const HINT_PREP_S = 4;
+
+function taskLines(task: TaskDto): string[] | null {
+  const lines = task.payload?.lines as string[] | undefined;
+  return Array.isArray(lines) && lines.length > 0 ? lines : null;
+}
+
+function totalRounds(task: TaskDto, config: DrillConfig): number {
+  const lines = taskLines(task);
+  if (lines) return lines.length;
+  const limits = task.payload?.round_limits_s as number[] | undefined;
+  if (Array.isArray(limits) && limits.length > 0) return limits.length;
+  return config.rounds;
+}
+
+function roundMaxSpeak(task: TaskDto, config: DrillConfig, round: number): number {
+  const limits =
+    (task.payload?.round_limits_s as number[] | undefined) ?? config.round_speak_s;
+  if (Array.isArray(limits) && limits[round - 1] != null) return limits[round - 1];
+  return config.max_speak_s;
+}
+
+function speak(text: string, onEnd: () => void): () => void {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  const voice = speechSynthesis
+    .getVoices()
+    .find((v) => v.lang === "en-US" && v.localService) ??
+    speechSynthesis.getVoices().find((v) => v.lang.startsWith("en"));
+  if (voice) u.voice = voice;
+  u.rate = 1.0;
+  let done = false;
+  const finish = () => {
+    if (!done) {
+      done = true;
+      onEnd();
+    }
+  };
+  u.onend = finish;
+  u.onerror = finish;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+  // Safari/Chrome potrafią zgubić onend - zabezpieczenie czasowe
+  const guard = window.setTimeout(finish, 1000 + text.length * 90);
+  return () => {
+    window.clearTimeout(guard);
+    speechSynthesis.cancel();
+  };
+}
+
 export default function DrillScreen({
   sessionId,
   firstTask,
@@ -25,9 +75,11 @@ export default function DrillScreen({
   vad,
   onSessionEnd,
 }: Props) {
-  const [phase, setPhase] = useState<Phase>("present");
+  const [phase, setPhase] = useState<Phase>("prep");
   const [task, setTask] = useState<TaskDto>(firstTask);
-  const [attemptIndex, setAttemptIndex] = useState(1);
+  const [taskIndex, setTaskIndex] = useState(1);
+  const [roundIndex, setRoundIndex] = useState(1);
+  const [prepLeft, setPrepLeft] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [result, setResult] = useState<AttemptResult | null>(null);
@@ -41,15 +93,22 @@ export default function DrillScreen({
   const vadChainRef = useRef<Promise<void>>(Promise.resolve());
   const advanceTimerRef = useRef<number | null>(null);
   const showTranscriptRef = useRef(false);
+  const recordingIndexRef = useRef(0); // numer nagrania w sesji (krzywa zmęczenia)
+  const roundRef = useRef(1);
+  const cancelSpeechRef = useRef<(() => void) | null>(null);
 
-  const remaining = Math.max(0, config.max_speak_s - elapsed);
-  const timeLow = remaining <= config.max_speak_s * 0.2;
+  const rounds = totalRounds(task, config);
+  const maxSpeak = roundMaxSpeak(task, config, roundIndex);
+  const remaining = Math.max(0, maxSpeak - elapsed);
+  const timeLow = remaining <= maxSpeak * 0.2;
+  const lines = taskLines(task);
+  const currentLine = lines ? lines[roundIndex - 1] : null;
 
-  // powrót do ekranu głównego: przerywa nagrywanie, nic nie wysyła
   const exitSession = useCallback(() => {
     stoppedRef.current = true;
     recorder.onVadFrame = null;
     recorder.stop();
+    cancelSpeechRef.current?.();
     onSessionEnd("aborted");
   }, [recorder, onSessionEnd]);
 
@@ -65,8 +124,9 @@ export default function DrillScreen({
         session_id: sessionId,
         task_id: task.id,
         t0_offset_samples: t0Ref.current,
-        attempt_index: attemptIndex,
-        round_index: 1,
+        attempt_index: recordingIndexRef.current,
+        round_index: roundRef.current,
+        structure_mode: task.structure_mode,
       });
       // odpytywanie co 500 ms do status done (spec sekcja 10)
       const poll = async (): Promise<AttemptResult> => {
@@ -87,45 +147,88 @@ export default function DrillScreen({
       setErrorMsg(String(e));
       setPhase("error");
     }
-  }, [recorder, sessionId, task.id, attemptIndex]);
+  }, [recorder, sessionId, task.id, task.structure_mode]);
 
-  const beginAttempt = useCallback(
-    async (t: TaskDto) => {
-      setTask(t);
-      setResult(null);
-      setElapsed(0);
-      setSpeaking(false);
-      stoppedRef.current = false;
-      firstSpeechRef.current = false;
-      vad.reset();
-      await recorder.start();
-      // bodziec pojawia się teraz - t0 to offset próbek w buforze
-      requestAnimationFrame(() => {
-        t0Ref.current = recorder.markT0();
-        lastSpeechSampleRef.current = t0Ref.current;
-        setPhase("record");
+  const startRecording = useCallback(async () => {
+    stoppedRef.current = false;
+    firstSpeechRef.current = false;
+    setElapsed(0);
+    setSpeaking(false);
+    vad.reset();
+    recordingIndexRef.current += 1;
+    await recorder.start();
+    // bodziec dostępny od teraz - t0 to offset próbek w buforze
+    requestAnimationFrame(() => {
+      t0Ref.current = recorder.markT0();
+      lastSpeechSampleRef.current = t0Ref.current;
+      setPhase("record");
+    });
+
+    recorder.onVadFrame = (frame) => {
+      vadChainRef.current = vadChainRef.current.then(async () => {
+        if (stoppedRef.current) return;
+        const prob = await vad.processFrame(frame);
+        const isSpeech = prob >= vadThreshold;
+        setSpeaking(isSpeech);
+        if (isSpeech) {
+          firstSpeechRef.current = true;
+          lastSpeechSampleRef.current = recorder.samplesRecorded;
+        }
       });
+    };
+  }, [recorder, vad, vadThreshold]);
 
-      recorder.onVadFrame = (frame) => {
-        vadChainRef.current = vadChainRef.current.then(async () => {
-          if (stoppedRef.current) return;
-          const prob = await vad.processFrame(frame);
-          const isSpeech = prob >= vadThreshold;
-          setSpeaking(isSpeech);
-          if (isSpeech) {
-            firstSpeechRef.current = true;
-            lastSpeechSampleRef.current = recorder.samplesRecorded;
-          }
+  const beginRound = useCallback(
+    (t: TaskDto, round: number) => {
+      setTask(t);
+      setRoundIndex(round);
+      roundRef.current = round;
+      setResult(null);
+
+      const roundLines = taskLines(t);
+      if (roundLines) {
+        // Shadow Conversation: odtwórz kwestię AI, nagrywanie startuje po niej
+        setPhase("listen");
+        cancelSpeechRef.current = speak(roundLines[round - 1], () => {
+          cancelSpeechRef.current = null;
+          startRecording();
         });
-      };
+        return;
+      }
+
+      const hintPrep =
+        t.structure_mode === "explicit" && t.structure_hint ? HINT_PREP_S : 0;
+      const prepSeconds = round === 1 ? config.prep_time_s + hintPrep : 0;
+      if (prepSeconds > 0) {
+        setPrepLeft(prepSeconds);
+        setPhase("prep");
+        return; // odliczanie w useEffect poniżej
+      }
+      startRecording();
     },
-    [recorder, vad, vadThreshold]
+    [config.prep_time_s, startRecording]
   );
 
   useEffect(() => {
-    beginAttempt(firstTask);
+    beginRound(firstTask, 1);
+    return () => cancelSpeechRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // odliczanie fazy przygotowania (łańcuch setTimeout - restartuje się też,
+  // gdy kolejne zadanie zaczyna od fazy prep bez zmiany phase)
+  useEffect(() => {
+    if (phase !== "prep" || prepLeft <= 0) return;
+    const t = window.setTimeout(() => {
+      if (prepLeft <= 1) {
+        setPrepLeft(0);
+        startRecording();
+      } else {
+        setPrepLeft(prepLeft - 1);
+      }
+    }, 1000);
+    return () => window.clearTimeout(t);
+  }, [phase, prepLeft, startRecording]);
 
   // pętla czasu i auto-stopu podczas nagrywania
   useEffect(() => {
@@ -139,11 +242,11 @@ export default function DrillScreen({
       const autoStopEnabled = config.auto_stop_silence_s > 0;
       const canAutoStop =
         autoStopEnabled && firstSpeechRef.current && el >= config.min_speak_s;
-      if (el >= config.max_speak_s) stopAndSubmit();
+      if (el >= maxSpeak) stopAndSubmit();
       else if (canAutoStop && silence >= config.auto_stop_silence_s) stopAndSubmit();
     }, 100);
     return () => window.clearInterval(iv);
-  }, [phase, config, recorder, stopAndSubmit]);
+  }, [phase, config, recorder, stopAndSubmit, maxSpeak]);
 
   const goNext = useCallback(async () => {
     if (advanceTimerRef.current) {
@@ -155,20 +258,33 @@ export default function DrillScreen({
       onSessionEnd("fatigue");
       return;
     }
-    if (attemptIndex >= config.attempts_per_session) {
+    if (roundIndex < rounds) {
+      beginRound(task, roundIndex + 1);
+      return;
+    }
+    if (taskIndex >= config.attempts_per_session) {
       onSessionEnd("completed");
       return;
     }
     try {
       const { task: next } = await api.nextTask(sessionId);
-      setAttemptIndex((i) => i + 1);
-      setPhase("present");
-      await beginAttempt(next);
+      setTaskIndex((i) => i + 1);
+      beginRound(next, 1);
     } catch (e) {
       setErrorMsg(String(e));
       setPhase("error");
     }
-  }, [attemptIndex, config.attempts_per_session, sessionId, beginAttempt, onSessionEnd, result]);
+  }, [
+    taskIndex,
+    roundIndex,
+    rounds,
+    task,
+    config.attempts_per_session,
+    sessionId,
+    beginRound,
+    onSessionEnd,
+    result,
+  ]);
 
   // automatyczne przejście po 4 s ekspozycji feedbacku (spec ekran 4)
   useEffect(() => {
@@ -225,6 +341,17 @@ export default function DrillScreen({
           <Stat label="long pauses" value={String(m.long_pause_count ?? 0)} />
         </div>
 
+        {config.id === "paraphrase" && m.lexical_distance_min != null && (
+          <p
+            className={`text-lg ${
+              m.lexical_distance_min > 0.5 ? "text-emerald-400" : "text-amber-400"
+            }`}
+          >
+            lexical distance {Number(m.lexical_distance_min).toFixed(2)}
+            {m.lexical_distance_min <= 0.5 && " - too close to the previous version"}
+          </p>
+        )}
+
         {failed && (
           <p className="text-lg text-red-400">
             Forbidden word used: {(m.forbidden_hits as string[]).join(", ")}
@@ -236,17 +363,18 @@ export default function DrillScreen({
           </p>
         )}
 
-        {config.id === "fluency_sprint" && Array.isArray(m.phonation_timeline) && (
-          <div className="flex h-16 items-end gap-1">
-            {(m.phonation_timeline as number[]).map((v, i) => (
-              <div
-                key={i}
-                className="w-3 bg-emerald-500"
-                style={{ height: `${Math.max(4, v * 100)}%`, opacity: 0.4 + v * 0.6 }}
-              />
-            ))}
-          </div>
-        )}
+        {(config.id === "fluency_sprint" || config.id === "story_loop") &&
+          Array.isArray(m.phonation_timeline) && (
+            <div className="flex h-16 items-end gap-1">
+              {(m.phonation_timeline as number[]).map((v, i) => (
+                <div
+                  key={i}
+                  className="w-3 bg-emerald-500"
+                  style={{ height: `${Math.max(4, v * 100)}%`, opacity: 0.4 + v * 0.6 }}
+                />
+              ))}
+            </div>
+          )}
 
         {result.transcript && (
           <div className="w-full max-w-2xl">
@@ -269,13 +397,59 @@ export default function DrillScreen({
           next
         </button>
         <p className="text-sm text-neutral-600">
-          attempt {attemptIndex} / {config.attempts_per_session}
+          {rounds > 1 && (
+            <span className="mr-4">
+              round {roundIndex} / {rounds}
+            </span>
+          )}
+          attempt {taskIndex} / {config.attempts_per_session}
         </p>
       </div>
     );
   }
 
-  // present / record: bodziec + timer + pasek mowy. Nic więcej (spec sekcja 11).
+  if (phase === "prep") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-8">
+        <ExitButton onClick={exitSession} />
+        <div className="mb-12 font-mono text-7xl tabular-nums text-neutral-500">
+          {prepLeft}
+        </div>
+        <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
+          {task.prompt_text}
+        </p>
+        {task.structure_mode === "explicit" && task.structure_hint && (
+          <div className="mt-10 max-w-xl text-center">
+            <p className="text-sm uppercase tracking-wide text-sky-400">
+              {task.structure_hint.label}
+            </p>
+            {task.structure_hint.example && (
+              <p className="mt-2 text-lg text-neutral-400">
+                {task.structure_hint.example}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (phase === "listen") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-8">
+        <ExitButton onClick={exitSession} />
+        <p className="mb-6 text-sm uppercase tracking-wide text-neutral-500">
+          {roundIndex} / {rounds}
+        </p>
+        <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
+          {currentLine}
+        </p>
+        <p className="mt-12 text-neutral-500">…</p>
+      </div>
+    );
+  }
+
+  // record: bodziec + timer + pasek mowy. Nic więcej (spec sekcja 11).
   return (
     <div
       className={`flex min-h-screen flex-col items-center justify-center p-8 transition-colors duration-500 ${
@@ -291,8 +465,14 @@ export default function DrillScreen({
       )}
 
       <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
-        {task.prompt_text}
+        {currentLine ?? task.prompt_text}
       </p>
+
+      {rounds > 1 && (
+        <p className="mt-6 font-mono text-sm text-neutral-600">
+          {roundIndex} / {rounds}
+        </p>
+      )}
 
       {forbidden.length > 0 && (
         <div className="mt-8 text-center">

@@ -1,0 +1,16 @@
+{
+  "id": "idea_expansion",
+  "name": "Idea Expansion",
+  "stimulus": "text",
+  "prep_time_s": 0,
+  "min_speak_s": 15,
+  "max_speak_s": 45,
+  "auto_stop_silence_s": 2.5,
+  "rounds": 1,
+  "attempts_per_session": 6,
+  "primary_metrics": ["mean_length_utterance", "sentence_count"],
+  "target": { "sentence_count": { "min": 5 } },
+  "llm_eval": true,
+  "show_timer": true,
+  "show_transcript_during": false
+}

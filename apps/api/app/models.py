@@ -77,6 +77,18 @@ class ProgressSnapshot(Base):
     rolling_metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class Observation(Base):
+    """Obserwacje tygodniowe (spec 5.5): powtarzalne wzorce błędów, poza sesją."""
+
+    __tablename__ = "observations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+    period_start: Mapped[str] = mapped_column(Text)
+    period_end: Mapped[str] = mapped_column(Text)
+    items: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
 class ModuleState(Base):
     """Bieżący poziom trudności per moduł (jeden użytkownik)."""
 

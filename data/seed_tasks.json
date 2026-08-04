@@ -1,160 +1,1505 @@
 {
-  "version": 1,
-  "language": "en",
-  "note": "Bank startowy. difficulty 1-10 dotyczy treści (abstrakcyjność, obcość tematu, wymagana precyzja), nigdy limitu czasu.",
-
-  "config": {
-    "fillers": [
-      "um", "uh", "erm", "er", "hmm", "ah",
-      "like", "you know", "i mean", "kind of", "sort of",
-      "well", "actually", "basically", "literally", "so yeah", "right"
-    ],
-    "repair_markers": [
-      "i mean", "sorry", "no wait", "or rather", "actually no",
-      "let me rephrase", "what i wanted to say", "scratch that", "how do you say"
-    ],
-    "pause_thresholds_ms": {
-      "silent_pause": 250,
-      "long_pause": 1000
-    },
-    "whisper_disfluency_prompt": "Um, so I was, uh, I was thinking that maybe we could, you know, we could try... I mean, it's, it's not really, hmm, how do you say it, it's not really that simple, right? Like, uh, the thing is, the thing is that I, I don't, I don't know."
-  },
-
-  "structures": [
-    { "id": "future_will", "label": "Future: will", "hint": "will + bare infinitive", "example": "I think it will take about three months.", "detect": "AUX 'will' + VB" },
-    { "id": "future_going_to", "label": "Future: going to", "hint": "be going to + infinitive", "example": "We are going to move in September.", "detect": "be + going + to + VB" },
-    { "id": "future_continuous", "label": "Future continuous", "hint": "will be + -ing", "example": "This time next week I will be sitting on a train.", "detect": "will + be + VBG" },
-    { "id": "future_perfect", "label": "Future perfect", "hint": "will have + past participle", "example": "By June I will have finished the migration.", "detect": "will + have + VBN" },
-    { "id": "past_simple", "label": "Past simple", "hint": "regular and irregular past forms", "example": "I left at seven and got there late.", "detect": "VBD without perfect/continuous auxiliary" },
-    { "id": "past_continuous", "label": "Past continuous", "hint": "was/were + -ing", "example": "I was reviewing the code when the call came.", "detect": "was|were + VBG" },
-    { "id": "past_perfect", "label": "Past perfect", "hint": "had + past participle", "example": "The deadline had already passed when I noticed.", "detect": "had + VBN" },
-    { "id": "used_to", "label": "used to", "hint": "used to + infinitive, for discontinued states and habits", "example": "I used to commute two hours a day.", "detect": "used + to + VB" },
-    { "id": "would_habitual", "label": "would (habitual past)", "hint": "would + infinitive for repeated past actions", "example": "Every summer we would drive to the coast.", "detect": "would + VB in past narrative context" },
-    { "id": "conditional_0", "label": "Zero conditional", "hint": "if + present, present", "example": "If a meeting has no agenda, it runs long.", "detect": "if + VBZ|VBP, VBZ|VBP" },
-    { "id": "conditional_1", "label": "First conditional", "hint": "if + present, will + infinitive", "example": "If the build fails, I will roll it back.", "detect": "if + VBZ|VBP, will + VB" },
-    { "id": "conditional_2", "label": "Second conditional", "hint": "if + past, would + infinitive", "example": "If I had more time, I would rewrite it.", "detect": "if + VBD, would|could|might + VB" },
-    { "id": "conditional_3", "label": "Third conditional", "hint": "if + had + past participle, would have + past participle", "example": "If I had asked earlier, I would have saved a week.", "detect": "if + had + VBN, would|could|might + have + VBN" },
-    { "id": "conditional_mixed", "label": "Mixed conditional", "hint": "past condition, present result", "example": "If I had studied law, I would be in a different city now.", "detect": "if + had + VBN, would + VB (present reference)" },
-    { "id": "modal_speculation_present", "label": "Speculation: present", "hint": "must / might / could / can't + be", "example": "She must be stuck in traffic.", "detect": "must|might|could|can't + be|VB" },
-    { "id": "modal_speculation_past", "label": "Speculation: past", "hint": "must / might / could have + past participle", "example": "He might have forgotten the meeting.", "detect": "must|might|could|can't + have + VBN" },
-    { "id": "passive_voice", "label": "Passive voice", "hint": "be + past participle, agent optional", "example": "The parts are assembled in three factories.", "detect": "nsubjpass + auxpass" },
-    { "id": "reported_speech", "label": "Reported speech", "hint": "backshift, no direct quotation", "example": "He said he had already sent it.", "detect": "say|tell|ask + ccomp with backshifted tense" },
-    { "id": "relative_clauses", "label": "Relative clauses", "hint": "who / which / whose / that, defining and non-defining", "example": "The colleague whose desk faces the window never uses it.", "detect": "relcl dependency" },
-    { "id": "gerund_vs_infinitive", "label": "Gerund vs infinitive", "hint": "verb patterns: avoid doing, plan to do, keep doing, refuse to do", "example": "I keep postponing it because I refuse to admit it is stuck.", "detect": "xcomp with VBG or TO+VB" },
-    { "id": "wish_if_only", "label": "wish / if only", "hint": "wish + past for present regret, wish + past perfect for past regret", "example": "I wish I had said no at the start.", "detect": "wish|if only + VBD|had+VBN" }
+ "version": 1,
+ "language": "en",
+ "note": "Bank startowy. difficulty 1-10 dotyczy treści (abstrakcyjność, obcość tematu, wymagana precyzja), nigdy limitu czasu.",
+ "config": {
+  "fillers": [
+   "um",
+   "uh",
+   "erm",
+   "er",
+   "hmm",
+   "ah",
+   "like",
+   "you know",
+   "i mean",
+   "kind of",
+   "sort of",
+   "well",
+   "actually",
+   "basically",
+   "literally",
+   "so yeah",
+   "right"
   ],
-
-  "tasks": [
-    { "id": "rr_0001", "module": "rapid_response", "difficulty": 1, "prompt_text": "What did you eat for breakfast today?", "tags": ["daily", "concrete"] },
-    { "id": "rr_0002", "module": "rapid_response", "difficulty": 1, "prompt_text": "Describe the room you are sitting in right now.", "tags": ["daily", "concrete"] },
-    { "id": "rr_0003", "module": "rapid_response", "difficulty": 2, "prompt_text": "What is the fastest way to get from your home to the nearest shop?", "tags": ["daily", "procedural"] },
-    { "id": "rr_0004", "module": "rapid_response", "difficulty": 2, "prompt_text": "Tell me about the last thing that annoyed you.", "tags": ["personal"] },
-    { "id": "rr_0005", "module": "rapid_response", "difficulty": 3, "prompt_text": "How do you decide what to cook when you have no plan?", "tags": ["procedural"] },
-    { "id": "rr_0006", "module": "rapid_response", "difficulty": 3, "prompt_text": "What would you do with an unexpected free afternoon?", "tags": ["hypothetical"] },
-    { "id": "rr_0007", "module": "rapid_response", "difficulty": 4, "prompt_text": "Explain your job to someone who has never heard of your industry.", "tags": ["work"] },
-    { "id": "rr_0008", "module": "rapid_response", "difficulty": 4, "prompt_text": "What makes a piece of software feel slow, even when it is fast?", "tags": ["tech", "analytical"] },
-    { "id": "rr_0009", "module": "rapid_response", "difficulty": 5, "prompt_text": "Why do people keep buying things they do not need?", "tags": ["abstract"] },
-    { "id": "rr_0010", "module": "rapid_response", "difficulty": 5, "prompt_text": "What is the difference between being busy and being productive?", "tags": ["abstract"] },
-    { "id": "rr_0011", "module": "rapid_response", "difficulty": 6, "prompt_text": "Should employers be allowed to monitor what workers do on their computers?", "tags": ["opinion", "work"] },
-    { "id": "rr_0012", "module": "rapid_response", "difficulty": 6, "prompt_text": "What is one thing your industry gets consistently wrong?", "tags": ["work", "opinion"] },
-    { "id": "rr_0013", "module": "rapid_response", "difficulty": 7, "prompt_text": "Is it possible to be objective about something you care deeply about?", "tags": ["abstract"] },
-    { "id": "rr_0014", "module": "rapid_response", "difficulty": 8, "prompt_text": "How much of what you call a personal preference is actually a habit you never questioned?", "tags": ["abstract", "reflective"] },
-    { "id": "rr_0015", "module": "rapid_response", "difficulty": 9, "prompt_text": "If expertise means knowing what to ignore, how do you know you are ignoring the right things?", "tags": ["abstract", "meta"] },
-
-    { "id": "dw_0001", "module": "describe_without_word", "difficulty": 1, "prompt_text": "Describe: umbrella", "payload": { "target": "umbrella", "forbidden_words": ["umbrella", "rain", "parasol"] }, "tags": ["object"] },
-    { "id": "dw_0002", "module": "describe_without_word", "difficulty": 1, "prompt_text": "Describe: elevator", "payload": { "target": "elevator", "forbidden_words": ["elevator", "lift", "floor"] }, "tags": ["object"] },
-    { "id": "dw_0003", "module": "describe_without_word", "difficulty": 2, "prompt_text": "Describe: refrigerator", "payload": { "target": "refrigerator", "forbidden_words": ["refrigerator", "fridge", "cold", "food"] }, "tags": ["object"] },
-    { "id": "dw_0004", "module": "describe_without_word", "difficulty": 3, "prompt_text": "Describe: deadline", "payload": { "target": "deadline", "forbidden_words": ["deadline", "time", "date", "late"] }, "tags": ["work"] },
-    { "id": "dw_0005", "module": "describe_without_word", "difficulty": 3, "prompt_text": "Describe: traffic jam", "payload": { "target": "traffic jam", "forbidden_words": ["traffic", "jam", "car", "road"] }, "tags": ["daily"] },
-    { "id": "dw_0006", "module": "describe_without_word", "difficulty": 4, "prompt_text": "Describe: insurance", "payload": { "target": "insurance", "forbidden_words": ["insurance", "insure", "risk", "money"] }, "tags": ["abstract"] },
-    { "id": "dw_0007", "module": "describe_without_word", "difficulty": 5, "prompt_text": "Describe: nostalgia", "payload": { "target": "nostalgia", "forbidden_words": ["nostalgia", "past", "memory", "remember"] }, "tags": ["emotion"] },
-    { "id": "dw_0008", "module": "describe_without_word", "difficulty": 5, "prompt_text": "Describe: debugging", "payload": { "target": "debugging", "forbidden_words": ["debug", "bug", "code", "error"] }, "tags": ["tech"] },
-    { "id": "dw_0009", "module": "describe_without_word", "difficulty": 6, "prompt_text": "Describe: bureaucracy", "payload": { "target": "bureaucracy", "forbidden_words": ["bureaucracy", "office", "paper", "government"] }, "tags": ["abstract"] },
-    { "id": "dw_0010", "module": "describe_without_word", "difficulty": 7, "prompt_text": "Describe: irony", "payload": { "target": "irony", "forbidden_words": ["irony", "ironic", "sarcasm", "opposite"] }, "tags": ["abstract"] },
-    { "id": "dw_0011", "module": "describe_without_word", "difficulty": 8, "prompt_text": "Describe: compromise", "payload": { "target": "compromise", "forbidden_words": ["compromise", "agree", "middle", "both"] }, "tags": ["abstract"] },
-    { "id": "dw_0012", "module": "describe_without_word", "difficulty": 9, "prompt_text": "Describe: precedent", "payload": { "target": "precedent", "forbidden_words": ["precedent", "before", "first", "example", "law"] }, "tags": ["abstract"] },
-
-    { "id": "fs_0001", "module": "fluency_sprint", "difficulty": 1, "prompt_text": "Your typical Monday, from waking up to lunch.", "tags": ["daily"] },
-    { "id": "fs_0002", "module": "fluency_sprint", "difficulty": 2, "prompt_text": "A place you know well enough to describe with your eyes closed.", "tags": ["descriptive"] },
-    { "id": "fs_0003", "module": "fluency_sprint", "difficulty": 3, "prompt_text": "Everything you know about how bread is made.", "tags": ["procedural"] },
-    { "id": "fs_0004", "module": "fluency_sprint", "difficulty": 3, "prompt_text": "The last film or series you finished, told as if to someone who will never watch it.", "tags": ["narrative"] },
-    { "id": "fs_0005", "module": "fluency_sprint", "difficulty": 4, "prompt_text": "How you learned to do the thing you are best at.", "tags": ["personal", "narrative"] },
-    { "id": "fs_0006", "module": "fluency_sprint", "difficulty": 5, "prompt_text": "What happens between clicking a link and seeing a web page.", "tags": ["tech", "explanatory"] },
-    { "id": "fs_0007", "module": "fluency_sprint", "difficulty": 6, "prompt_text": "Why some cities feel alive and others feel empty.", "tags": ["abstract"] },
-    { "id": "fs_0008", "module": "fluency_sprint", "difficulty": 7, "prompt_text": "The strongest argument against something you believe.", "tags": ["abstract", "argument"] },
-    { "id": "fs_0009", "module": "fluency_sprint", "difficulty": 8, "prompt_text": "What would have to be true for you to change your mind about your career.", "tags": ["reflective"] },
-    { "id": "fs_0010", "module": "fluency_sprint", "difficulty": 9, "prompt_text": "Whether it is possible to measure something without changing it, in any field you like.", "tags": ["abstract", "meta"] },
-
-    { "id": "pp_0001", "module": "paraphrase", "difficulty": 2, "prompt_text": "Say this three different ways: I am running late.", "payload": { "source": "I am running late." }, "tags": ["daily"] },
-    { "id": "pp_0002", "module": "paraphrase", "difficulty": 3, "prompt_text": "Say this three different ways: I do not agree with that decision.", "payload": { "source": "I do not agree with that decision." }, "tags": ["work"] },
-    { "id": "pp_0003", "module": "paraphrase", "difficulty": 4, "prompt_text": "Say this three different ways: The project failed because nobody owned it.", "payload": { "source": "The project failed because nobody owned it." }, "tags": ["work"] },
-    { "id": "pp_0004", "module": "paraphrase", "difficulty": 5, "prompt_text": "Say this three different ways: I need more information before I can commit.", "payload": { "source": "I need more information before I can commit." }, "tags": ["work"] },
-    { "id": "pp_0005", "module": "paraphrase", "difficulty": 6, "prompt_text": "Say this three different ways: This solution works, but it will not scale.", "payload": { "source": "This solution works, but it will not scale." }, "tags": ["tech"] },
-    { "id": "pp_0006", "module": "paraphrase", "difficulty": 7, "prompt_text": "Say this three different ways: We are optimising for the wrong thing.", "payload": { "source": "We are optimising for the wrong thing." }, "tags": ["abstract"] },
-
-    { "id": "sp_0001", "module": "simplify", "difficulty": 3, "prompt_text": "Simplify: The utilisation of alternative transportation modalities may contribute to a reduction in urban congestion.", "payload": { "source": "The utilisation of alternative transportation modalities may contribute to a reduction in urban congestion." }, "tags": ["formal"] },
-    { "id": "sp_0002", "module": "simplify", "difficulty": 4, "prompt_text": "Simplify: Prior to the implementation of the proposed changes, stakeholder consultation must be undertaken.", "payload": { "source": "Prior to the implementation of the proposed changes, stakeholder consultation must be undertaken." }, "tags": ["work"] },
-    { "id": "sp_0003", "module": "simplify", "difficulty": 5, "prompt_text": "Simplify: The system exhibits degraded performance characteristics under conditions of elevated concurrent load.", "payload": { "source": "The system exhibits degraded performance characteristics under conditions of elevated concurrent load." }, "tags": ["tech"] },
-    { "id": "sp_0004", "module": "simplify", "difficulty": 6, "prompt_text": "Simplify: There is insufficient empirical evidence to substantiate the causal relationship that has been posited.", "payload": { "source": "There is insufficient empirical evidence to substantiate the causal relationship that has been posited." }, "tags": ["academic"] },
-    { "id": "sp_0005", "module": "simplify", "difficulty": 7, "prompt_text": "Simplify: The organisation's failure to establish clear lines of accountability resulted in the perpetuation of suboptimal decision-making processes.", "payload": { "source": "The organisation's failure to establish clear lines of accountability resulted in the perpetuation of suboptimal decision-making processes." }, "tags": ["work"] },
-    { "id": "sp_0006", "module": "simplify", "difficulty": 8, "prompt_text": "Simplify: Notwithstanding the aforementioned constraints, the feasibility of the initiative remains contingent upon the availability of additional resources.", "payload": { "source": "Notwithstanding the aforementioned constraints, the feasibility of the initiative remains contingent upon the availability of additional resources." }, "tags": ["formal"] },
-
-    { "id": "sl_0001", "module": "story_loop", "difficulty": 2, "prompt_text": "Tell the story of the last time you were lost. Round 1: 90 seconds.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["narrative", "personal"] },
-    { "id": "sl_0002", "module": "story_loop", "difficulty": 3, "prompt_text": "Tell the story of how you got your current job.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["narrative", "work"] },
-    { "id": "sl_0003", "module": "story_loop", "difficulty": 4, "prompt_text": "Tell the story of a decision you regret.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["narrative", "personal"] },
-    { "id": "sl_0004", "module": "story_loop", "difficulty": 5, "prompt_text": "Tell the story of a problem at work that took much longer to solve than expected.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["narrative", "work"] },
-    { "id": "sl_0005", "module": "story_loop", "difficulty": 6, "prompt_text": "Tell the story of something you changed your mind about.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["narrative", "reflective"] },
-
-    { "id": "uq_0001", "module": "unexpected_questions", "difficulty": 2, "prompt_text": "Which door do you use most often, and why that one?", "tags": ["absurd", "concrete"] },
-    { "id": "uq_0002", "module": "unexpected_questions", "difficulty": 3, "prompt_text": "What is the most useless object you own and refuse to throw away?", "tags": ["personal"] },
-    { "id": "uq_0003", "module": "unexpected_questions", "difficulty": 4, "prompt_text": "If you had to teach someone your job in one hour, what would you cut?", "tags": ["work"] },
-    { "id": "uq_0004", "module": "unexpected_questions", "difficulty": 5, "prompt_text": "What sound would you miss most if it disappeared?", "tags": ["sensory"] },
-    { "id": "uq_0005", "module": "unexpected_questions", "difficulty": 6, "prompt_text": "Who benefits from you being tired?", "tags": ["provocative"] },
-    { "id": "uq_0006", "module": "unexpected_questions", "difficulty": 7, "prompt_text": "What is a rule you follow that nobody ever told you to follow?", "tags": ["reflective"] },
-    { "id": "uq_0007", "module": "unexpected_questions", "difficulty": 8, "prompt_text": "What do you pretend to understand more than you do?", "tags": ["provocative"] },
-    { "id": "uq_0008", "module": "unexpected_questions", "difficulty": 9, "prompt_text": "If your work disappeared tomorrow, who would notice second?", "tags": ["abstract"] },
-
-    { "id": "sc_0001", "module": "shadow_conversation", "difficulty": 2, "prompt_text": "Opener: So, how was your weekend?", "payload": { "opener": "So, how was your weekend?", "turns": 8, "persona": "friendly colleague, small talk" }, "tags": ["small_talk"] },
-    { "id": "sc_0002", "module": "shadow_conversation", "difficulty": 4, "prompt_text": "Opener: I heard you were on the migration project. How is it going?", "payload": { "opener": "I heard you were on the migration project. How is it going?", "turns": 10, "persona": "curious colleague from another team" }, "tags": ["work"] },
-    { "id": "sc_0003", "module": "shadow_conversation", "difficulty": 5, "prompt_text": "Opener: Can I ask you something? Do you actually like what you do?", "payload": { "opener": "Can I ask you something? Do you actually like what you do?", "turns": 10, "persona": "direct, slightly provocative acquaintance" }, "tags": ["personal"] },
-    { "id": "sc_0004", "module": "shadow_conversation", "difficulty": 6, "prompt_text": "Opener: I disagree with your estimate. Convince me.", "payload": { "opener": "I disagree with your estimate. Convince me.", "turns": 12, "persona": "sceptical manager, interrupts" }, "tags": ["work", "pressure"] },
-    { "id": "sc_0005", "module": "shadow_conversation", "difficulty": 8, "prompt_text": "Opener: Let us skip the intro. What is the biggest weakness of your approach?", "payload": { "opener": "Let us skip the intro. What is the biggest weakness of your approach?", "turns": 12, "persona": "impatient expert, high standards" }, "tags": ["work", "pressure"] },
-
-    { "id": "ie_0001", "module": "idea_expansion", "difficulty": 2, "prompt_text": "Expand into five sentences: The coffee was bad.", "payload": { "seed": "The coffee was bad.", "target_sentences": 5 }, "tags": ["daily"] },
-    { "id": "ie_0002", "module": "idea_expansion", "difficulty": 3, "prompt_text": "Expand into five sentences: The meeting could have been an email.", "payload": { "seed": "The meeting could have been an email.", "target_sentences": 5 }, "tags": ["work"] },
-    { "id": "ie_0003", "module": "idea_expansion", "difficulty": 4, "prompt_text": "Expand into five sentences: I prefer working alone.", "payload": { "seed": "I prefer working alone.", "target_sentences": 5 }, "tags": ["personal"] },
-    { "id": "ie_0004", "module": "idea_expansion", "difficulty": 5, "prompt_text": "Expand into five sentences: Most documentation is written for the wrong reader.", "payload": { "seed": "Most documentation is written for the wrong reader.", "target_sentences": 5 }, "tags": ["tech"] },
-    { "id": "ie_0005", "module": "idea_expansion", "difficulty": 6, "prompt_text": "Expand into five sentences: Speed and quality are not always opposites.", "payload": { "seed": "Speed and quality are not always opposites.", "target_sentences": 5 }, "tags": ["abstract"] },
-    { "id": "ie_0006", "module": "idea_expansion", "difficulty": 7, "prompt_text": "Expand into five sentences: Most advice is autobiography in disguise.", "payload": { "seed": "Most advice is autobiography in disguise.", "target_sentences": 5 }, "tags": ["abstract"] },
-
-    { "id": "cs_0001", "module": "conversation_simulation", "difficulty": 3, "prompt_text": "Small talk before a meeting starts. The other person arrives early too.", "payload": { "scenario": "small_talk", "persona": "colleague you barely know, polite, low pressure", "turns": 8, "user_goal": "keep the conversation alive until the meeting starts" }, "tags": ["small_talk"] },
-    { "id": "cs_0002", "module": "conversation_simulation", "difficulty": 5, "prompt_text": "Job interview. First question: walk me through your background.", "payload": { "scenario": "interview", "persona": "hiring manager, neutral tone, asks follow-ups", "turns": 12, "user_goal": "answer without over-explaining" }, "tags": ["work", "pressure"] },
-    { "id": "cs_0003", "module": "conversation_simulation", "difficulty": 6, "prompt_text": "Status update to a client whose project is two weeks late.", "payload": { "scenario": "client_bad_news", "persona": "client, disappointed but reasonable", "turns": 10, "user_goal": "deliver bad news and propose a path forward" }, "tags": ["work", "pressure"] },
-    { "id": "cs_0004", "module": "conversation_simulation", "difficulty": 8, "prompt_text": "Technical design review. Your approach is being challenged in front of others.", "payload": { "scenario": "design_review", "persona": "senior engineer, interrupts, asks for specifics", "turns": 14, "user_goal": "defend or revise your position under interruption" }, "tags": ["tech", "pressure"] },
-
-    { "id": "st_0001", "module": "rapid_response", "difficulty": 3, "target_structure": "future_will", "prompt_text": "Predict three things that will be different about your work in ten years.", "tags": ["structure", "future"] },
-    { "id": "st_0002", "module": "rapid_response", "difficulty": 2, "target_structure": "future_going_to", "prompt_text": "What have you already decided to do this weekend? Only things that are settled.", "tags": ["structure", "future"] },
-    { "id": "st_0003", "module": "rapid_response", "difficulty": 4, "target_structure": "future_continuous", "prompt_text": "Describe what you expect to be doing at exactly this hour next Tuesday.", "tags": ["structure", "future"] },
-    { "id": "st_0004", "module": "rapid_response", "difficulty": 5, "target_structure": "future_perfect", "prompt_text": "Name three things that must be finished before the end of this year, and place each one on the calendar.", "tags": ["structure", "future"] },
-    { "id": "st_0005", "module": "fluency_sprint", "difficulty": 2, "target_structure": "past_simple", "prompt_text": "Yesterday, step by step, from waking up to leaving the house.", "tags": ["structure", "past"] },
-    { "id": "st_0006", "module": "rapid_response", "difficulty": 3, "target_structure": "past_continuous", "prompt_text": "What was happening around you the last time you were interrupted by something urgent?", "tags": ["structure", "past"] },
-    { "id": "st_0007", "module": "rapid_response", "difficulty": 5, "target_structure": "past_perfect", "prompt_text": "Describe a moment when you arrived somewhere and realised the situation had already changed without you.", "tags": ["structure", "past"] },
-    { "id": "st_0008", "module": "rapid_response", "difficulty": 3, "target_structure": "used_to", "prompt_text": "What was part of your daily life ten years ago and has completely disappeared from it?", "tags": ["structure", "past"] },
-    { "id": "st_0009", "module": "story_loop", "difficulty": 4, "target_structure": "would_habitual", "prompt_text": "A routine from your childhood that repeated the same way every year.", "payload": { "round_limits_s": [90, 60, 45] }, "tags": ["structure", "past", "narrative"] },
-    { "id": "st_0010", "module": "rapid_response", "difficulty": 3, "target_structure": "conditional_0", "prompt_text": "Explain what always goes wrong when a meeting starts without an agenda.", "tags": ["structure", "conditional"] },
-    { "id": "st_0011", "module": "rapid_response", "difficulty": 3, "target_structure": "conditional_1", "prompt_text": "Your main plan for tomorrow falls through. What happens next?", "tags": ["structure", "conditional"] },
-    { "id": "st_0012", "module": "rapid_response", "difficulty": 5, "target_structure": "conditional_2", "prompt_text": "You are given a full year off, on full pay, starting Monday. Talk me through it.", "tags": ["structure", "conditional"] },
-    { "id": "st_0013", "module": "rapid_response", "difficulty": 7, "target_structure": "conditional_3", "prompt_text": "What is the one decision that would have completely changed your career?", "tags": ["structure", "conditional"] },
-    { "id": "st_0014", "module": "rapid_response", "difficulty": 8, "target_structure": "conditional_3", "prompt_text": "Think of a mistake nobody noticed. What was the alternative outcome, and why did it not happen?", "tags": ["structure", "conditional"] },
-    { "id": "st_0015", "module": "rapid_response", "difficulty": 9, "target_structure": "conditional_mixed", "prompt_text": "Name a choice you made years ago that still shapes your daily life, and describe the version of today where you chose otherwise.", "tags": ["structure", "conditional"] },
-    { "id": "st_0016", "module": "rapid_response", "difficulty": 4, "target_structure": "modal_speculation_present", "prompt_text": "A colleague has not replied to anything all day and their status is green. Give me your theories.", "tags": ["structure", "modal"] },
-    { "id": "st_0017", "module": "rapid_response", "difficulty": 6, "target_structure": "modal_speculation_past", "prompt_text": "You come home and the front door is open, but nothing is missing. Explain what happened before you arrived.", "tags": ["structure", "modal"] },
-    { "id": "st_0018", "module": "fluency_sprint", "difficulty": 5, "target_structure": "passive_voice", "prompt_text": "How an object on your desk was manufactured and delivered to you. You do not know who did any of it.", "tags": ["structure", "passive"] },
-    { "id": "st_0019", "module": "rapid_response", "difficulty": 6, "target_structure": "reported_speech", "prompt_text": "Someone gave you advice you ignored. Tell me what they said and what you answered, without quoting anyone directly.", "tags": ["structure", "reported"] },
-    { "id": "st_0020", "module": "describe_without_word", "difficulty": 5, "target_structure": "relative_clauses", "prompt_text": "Describe three people in your team precisely enough that a stranger could identify them in a crowded room.", "payload": { "target": "names", "forbidden_words": [] }, "tags": ["structure", "relative"] },
-    { "id": "st_0021", "module": "rapid_response", "difficulty": 6, "target_structure": "gerund_vs_infinitive", "prompt_text": "At work: what do you avoid, what do you keep postponing, what do you refuse, and what do you plan?", "tags": ["structure", "verb_patterns"] },
-    { "id": "st_0022", "module": "rapid_response", "difficulty": 6, "target_structure": "wish_if_only", "prompt_text": "What would you change about how this year has gone so far, if changing it were possible?", "tags": ["structure", "wish"] },
-    { "id": "st_0023", "module": "idea_expansion", "difficulty": 7, "target_structure": "conditional_2", "prompt_text": "Expand into five sentences: Nobody would notice if this rule disappeared.", "payload": { "seed": "Nobody would notice if this rule disappeared.", "target_sentences": 5 }, "tags": ["structure", "conditional"] },
-    { "id": "st_0024", "module": "simplify", "difficulty": 6, "target_structure": "passive_voice", "prompt_text": "Simplify: The organisation implemented a policy whereby all requests are reviewed by two independent assessors prior to approval.", "payload": { "source": "The organisation implemented a policy whereby all requests are reviewed by two independent assessors prior to approval." }, "tags": ["structure", "passive"] }
-  ]
+  "repair_markers": [
+   "i mean",
+   "sorry",
+   "no wait",
+   "or rather",
+   "actually no",
+   "let me rephrase",
+   "what i wanted to say",
+   "scratch that",
+   "how do you say"
+  ],
+  "pause_thresholds_ms": {
+   "silent_pause": 250,
+   "long_pause": 1000
+  },
+  "whisper_disfluency_prompt": "Um, so I was, uh, I was thinking that maybe we could, you know, we could try... I mean, it's, it's not really, hmm, how do you say it, it's not really that simple, right? Like, uh, the thing is, the thing is that I, I don't, I don't know."
+ },
+ "structures": [
+  {
+   "id": "future_will",
+   "label": "Future: will",
+   "hint": "will + bare infinitive",
+   "example": "I think it will take about three months.",
+   "detect": "AUX 'will' + VB"
+  },
+  {
+   "id": "future_going_to",
+   "label": "Future: going to",
+   "hint": "be going to + infinitive",
+   "example": "We are going to move in September.",
+   "detect": "be + going + to + VB"
+  },
+  {
+   "id": "future_continuous",
+   "label": "Future continuous",
+   "hint": "will be + -ing",
+   "example": "This time next week I will be sitting on a train.",
+   "detect": "will + be + VBG"
+  },
+  {
+   "id": "future_perfect",
+   "label": "Future perfect",
+   "hint": "will have + past participle",
+   "example": "By June I will have finished the migration.",
+   "detect": "will + have + VBN"
+  },
+  {
+   "id": "past_simple",
+   "label": "Past simple",
+   "hint": "regular and irregular past forms",
+   "example": "I left at seven and got there late.",
+   "detect": "VBD without perfect/continuous auxiliary"
+  },
+  {
+   "id": "past_continuous",
+   "label": "Past continuous",
+   "hint": "was/were + -ing",
+   "example": "I was reviewing the code when the call came.",
+   "detect": "was|were + VBG"
+  },
+  {
+   "id": "past_perfect",
+   "label": "Past perfect",
+   "hint": "had + past participle",
+   "example": "The deadline had already passed when I noticed.",
+   "detect": "had + VBN"
+  },
+  {
+   "id": "used_to",
+   "label": "used to",
+   "hint": "used to + infinitive, for discontinued states and habits",
+   "example": "I used to commute two hours a day.",
+   "detect": "used + to + VB"
+  },
+  {
+   "id": "would_habitual",
+   "label": "would (habitual past)",
+   "hint": "would + infinitive for repeated past actions",
+   "example": "Every summer we would drive to the coast.",
+   "detect": "would + VB in past narrative context"
+  },
+  {
+   "id": "conditional_0",
+   "label": "Zero conditional",
+   "hint": "if + present, present",
+   "example": "If a meeting has no agenda, it runs long.",
+   "detect": "if + VBZ|VBP, VBZ|VBP"
+  },
+  {
+   "id": "conditional_1",
+   "label": "First conditional",
+   "hint": "if + present, will + infinitive",
+   "example": "If the build fails, I will roll it back.",
+   "detect": "if + VBZ|VBP, will + VB"
+  },
+  {
+   "id": "conditional_2",
+   "label": "Second conditional",
+   "hint": "if + past, would + infinitive",
+   "example": "If I had more time, I would rewrite it.",
+   "detect": "if + VBD, would|could|might + VB"
+  },
+  {
+   "id": "conditional_3",
+   "label": "Third conditional",
+   "hint": "if + had + past participle, would have + past participle",
+   "example": "If I had asked earlier, I would have saved a week.",
+   "detect": "if + had + VBN, would|could|might + have + VBN"
+  },
+  {
+   "id": "conditional_mixed",
+   "label": "Mixed conditional",
+   "hint": "past condition, present result",
+   "example": "If I had studied law, I would be in a different city now.",
+   "detect": "if + had + VBN, would + VB (present reference)"
+  },
+  {
+   "id": "modal_speculation_present",
+   "label": "Speculation: present",
+   "hint": "must / might / could / can't + be",
+   "example": "She must be stuck in traffic.",
+   "detect": "must|might|could|can't + be|VB"
+  },
+  {
+   "id": "modal_speculation_past",
+   "label": "Speculation: past",
+   "hint": "must / might / could have + past participle",
+   "example": "He might have forgotten the meeting.",
+   "detect": "must|might|could|can't + have + VBN"
+  },
+  {
+   "id": "passive_voice",
+   "label": "Passive voice",
+   "hint": "be + past participle, agent optional",
+   "example": "The parts are assembled in three factories.",
+   "detect": "nsubjpass + auxpass"
+  },
+  {
+   "id": "reported_speech",
+   "label": "Reported speech",
+   "hint": "backshift, no direct quotation",
+   "example": "He said he had already sent it.",
+   "detect": "say|tell|ask + ccomp with backshifted tense"
+  },
+  {
+   "id": "relative_clauses",
+   "label": "Relative clauses",
+   "hint": "who / which / whose / that, defining and non-defining",
+   "example": "The colleague whose desk faces the window never uses it.",
+   "detect": "relcl dependency"
+  },
+  {
+   "id": "gerund_vs_infinitive",
+   "label": "Gerund vs infinitive",
+   "hint": "verb patterns: avoid doing, plan to do, keep doing, refuse to do",
+   "example": "I keep postponing it because I refuse to admit it is stuck.",
+   "detect": "xcomp with VBG or TO+VB"
+  },
+  {
+   "id": "wish_if_only",
+   "label": "wish / if only",
+   "hint": "wish + past for present regret, wish + past perfect for past regret",
+   "example": "I wish I had said no at the start.",
+   "detect": "wish|if only + VBD|had+VBN"
+  }
+ ],
+ "tasks": [
+  {
+   "id": "rr_0001",
+   "module": "rapid_response",
+   "difficulty": 1,
+   "prompt_text": "What did you eat for breakfast today?",
+   "tags": [
+    "daily",
+    "concrete"
+   ]
+  },
+  {
+   "id": "rr_0002",
+   "module": "rapid_response",
+   "difficulty": 1,
+   "prompt_text": "Describe the room you are sitting in right now.",
+   "tags": [
+    "daily",
+    "concrete"
+   ]
+  },
+  {
+   "id": "rr_0003",
+   "module": "rapid_response",
+   "difficulty": 2,
+   "prompt_text": "What is the fastest way to get from your home to the nearest shop?",
+   "tags": [
+    "daily",
+    "procedural"
+   ]
+  },
+  {
+   "id": "rr_0004",
+   "module": "rapid_response",
+   "difficulty": 2,
+   "prompt_text": "Tell me about the last thing that annoyed you.",
+   "tags": [
+    "personal"
+   ]
+  },
+  {
+   "id": "rr_0005",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "prompt_text": "How do you decide what to cook when you have no plan?",
+   "tags": [
+    "procedural"
+   ]
+  },
+  {
+   "id": "rr_0006",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "prompt_text": "What would you do with an unexpected free afternoon?",
+   "tags": [
+    "hypothetical"
+   ]
+  },
+  {
+   "id": "rr_0007",
+   "module": "rapid_response",
+   "difficulty": 4,
+   "prompt_text": "Explain your job to someone who has never heard of your industry.",
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "rr_0008",
+   "module": "rapid_response",
+   "difficulty": 4,
+   "prompt_text": "What makes a piece of software feel slow, even when it is fast?",
+   "tags": [
+    "tech",
+    "analytical"
+   ]
+  },
+  {
+   "id": "rr_0009",
+   "module": "rapid_response",
+   "difficulty": 5,
+   "prompt_text": "Why do people keep buying things they do not need?",
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "rr_0010",
+   "module": "rapid_response",
+   "difficulty": 5,
+   "prompt_text": "What is the difference between being busy and being productive?",
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "rr_0011",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "prompt_text": "Should employers be allowed to monitor what workers do on their computers?",
+   "tags": [
+    "opinion",
+    "work"
+   ]
+  },
+  {
+   "id": "rr_0012",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "prompt_text": "What is one thing your industry gets consistently wrong?",
+   "tags": [
+    "work",
+    "opinion"
+   ]
+  },
+  {
+   "id": "rr_0013",
+   "module": "rapid_response",
+   "difficulty": 7,
+   "prompt_text": "Is it possible to be objective about something you care deeply about?",
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "rr_0014",
+   "module": "rapid_response",
+   "difficulty": 8,
+   "prompt_text": "How much of what you call a personal preference is actually a habit you never questioned?",
+   "tags": [
+    "abstract",
+    "reflective"
+   ]
+  },
+  {
+   "id": "rr_0015",
+   "module": "rapid_response",
+   "difficulty": 9,
+   "prompt_text": "If expertise means knowing what to ignore, how do you know you are ignoring the right things?",
+   "tags": [
+    "abstract",
+    "meta"
+   ]
+  },
+  {
+   "id": "dw_0001",
+   "module": "describe_without_word",
+   "difficulty": 1,
+   "prompt_text": "Describe: umbrella",
+   "payload": {
+    "target": "umbrella",
+    "forbidden_words": [
+     "umbrella",
+     "rain",
+     "parasol"
+    ]
+   },
+   "tags": [
+    "object"
+   ]
+  },
+  {
+   "id": "dw_0002",
+   "module": "describe_without_word",
+   "difficulty": 1,
+   "prompt_text": "Describe: elevator",
+   "payload": {
+    "target": "elevator",
+    "forbidden_words": [
+     "elevator",
+     "lift",
+     "floor"
+    ]
+   },
+   "tags": [
+    "object"
+   ]
+  },
+  {
+   "id": "dw_0003",
+   "module": "describe_without_word",
+   "difficulty": 2,
+   "prompt_text": "Describe: refrigerator",
+   "payload": {
+    "target": "refrigerator",
+    "forbidden_words": [
+     "refrigerator",
+     "fridge",
+     "cold",
+     "food"
+    ]
+   },
+   "tags": [
+    "object"
+   ]
+  },
+  {
+   "id": "dw_0004",
+   "module": "describe_without_word",
+   "difficulty": 3,
+   "prompt_text": "Describe: deadline",
+   "payload": {
+    "target": "deadline",
+    "forbidden_words": [
+     "deadline",
+     "time",
+     "date",
+     "late"
+    ]
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "dw_0005",
+   "module": "describe_without_word",
+   "difficulty": 3,
+   "prompt_text": "Describe: traffic jam",
+   "payload": {
+    "target": "traffic jam",
+    "forbidden_words": [
+     "traffic",
+     "jam",
+     "car",
+     "road"
+    ]
+   },
+   "tags": [
+    "daily"
+   ]
+  },
+  {
+   "id": "dw_0006",
+   "module": "describe_without_word",
+   "difficulty": 4,
+   "prompt_text": "Describe: insurance",
+   "payload": {
+    "target": "insurance",
+    "forbidden_words": [
+     "insurance",
+     "insure",
+     "risk",
+     "money"
+    ]
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "dw_0007",
+   "module": "describe_without_word",
+   "difficulty": 5,
+   "prompt_text": "Describe: nostalgia",
+   "payload": {
+    "target": "nostalgia",
+    "forbidden_words": [
+     "nostalgia",
+     "past",
+     "memory",
+     "remember"
+    ]
+   },
+   "tags": [
+    "emotion"
+   ]
+  },
+  {
+   "id": "dw_0008",
+   "module": "describe_without_word",
+   "difficulty": 5,
+   "prompt_text": "Describe: debugging",
+   "payload": {
+    "target": "debugging",
+    "forbidden_words": [
+     "debug",
+     "bug",
+     "code",
+     "error"
+    ]
+   },
+   "tags": [
+    "tech"
+   ]
+  },
+  {
+   "id": "dw_0009",
+   "module": "describe_without_word",
+   "difficulty": 6,
+   "prompt_text": "Describe: bureaucracy",
+   "payload": {
+    "target": "bureaucracy",
+    "forbidden_words": [
+     "bureaucracy",
+     "office",
+     "paper",
+     "government"
+    ]
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "dw_0010",
+   "module": "describe_without_word",
+   "difficulty": 7,
+   "prompt_text": "Describe: irony",
+   "payload": {
+    "target": "irony",
+    "forbidden_words": [
+     "irony",
+     "ironic",
+     "sarcasm",
+     "opposite"
+    ]
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "dw_0011",
+   "module": "describe_without_word",
+   "difficulty": 8,
+   "prompt_text": "Describe: compromise",
+   "payload": {
+    "target": "compromise",
+    "forbidden_words": [
+     "compromise",
+     "agree",
+     "middle",
+     "both"
+    ]
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "dw_0012",
+   "module": "describe_without_word",
+   "difficulty": 9,
+   "prompt_text": "Describe: precedent",
+   "payload": {
+    "target": "precedent",
+    "forbidden_words": [
+     "precedent",
+     "before",
+     "first",
+     "example",
+     "law"
+    ]
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "fs_0001",
+   "module": "fluency_sprint",
+   "difficulty": 1,
+   "prompt_text": "Your typical Monday, from waking up to lunch.",
+   "tags": [
+    "daily"
+   ]
+  },
+  {
+   "id": "fs_0002",
+   "module": "fluency_sprint",
+   "difficulty": 2,
+   "prompt_text": "A place you know well enough to describe with your eyes closed.",
+   "tags": [
+    "descriptive"
+   ]
+  },
+  {
+   "id": "fs_0003",
+   "module": "fluency_sprint",
+   "difficulty": 3,
+   "prompt_text": "Everything you know about how bread is made.",
+   "tags": [
+    "procedural"
+   ]
+  },
+  {
+   "id": "fs_0004",
+   "module": "fluency_sprint",
+   "difficulty": 3,
+   "prompt_text": "The last film or series you finished, told as if to someone who will never watch it.",
+   "tags": [
+    "narrative"
+   ]
+  },
+  {
+   "id": "fs_0005",
+   "module": "fluency_sprint",
+   "difficulty": 4,
+   "prompt_text": "How you learned to do the thing you are best at.",
+   "tags": [
+    "personal",
+    "narrative"
+   ]
+  },
+  {
+   "id": "fs_0006",
+   "module": "fluency_sprint",
+   "difficulty": 5,
+   "prompt_text": "What happens between clicking a link and seeing a web page.",
+   "tags": [
+    "tech",
+    "explanatory"
+   ]
+  },
+  {
+   "id": "fs_0007",
+   "module": "fluency_sprint",
+   "difficulty": 6,
+   "prompt_text": "Why some cities feel alive and others feel empty.",
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "fs_0008",
+   "module": "fluency_sprint",
+   "difficulty": 7,
+   "prompt_text": "The strongest argument against something you believe.",
+   "tags": [
+    "abstract",
+    "argument"
+   ]
+  },
+  {
+   "id": "fs_0009",
+   "module": "fluency_sprint",
+   "difficulty": 8,
+   "prompt_text": "What would have to be true for you to change your mind about your career.",
+   "tags": [
+    "reflective"
+   ]
+  },
+  {
+   "id": "fs_0010",
+   "module": "fluency_sprint",
+   "difficulty": 9,
+   "prompt_text": "Whether it is possible to measure something without changing it, in any field you like.",
+   "tags": [
+    "abstract",
+    "meta"
+   ]
+  },
+  {
+   "id": "pp_0001",
+   "module": "paraphrase",
+   "difficulty": 2,
+   "prompt_text": "Say this three different ways: I am running late.",
+   "payload": {
+    "source": "I am running late."
+   },
+   "tags": [
+    "daily"
+   ]
+  },
+  {
+   "id": "pp_0002",
+   "module": "paraphrase",
+   "difficulty": 3,
+   "prompt_text": "Say this three different ways: I do not agree with that decision.",
+   "payload": {
+    "source": "I do not agree with that decision."
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "pp_0003",
+   "module": "paraphrase",
+   "difficulty": 4,
+   "prompt_text": "Say this three different ways: The project failed because nobody owned it.",
+   "payload": {
+    "source": "The project failed because nobody owned it."
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "pp_0004",
+   "module": "paraphrase",
+   "difficulty": 5,
+   "prompt_text": "Say this three different ways: I need more information before I can commit.",
+   "payload": {
+    "source": "I need more information before I can commit."
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "pp_0005",
+   "module": "paraphrase",
+   "difficulty": 6,
+   "prompt_text": "Say this three different ways: This solution works, but it will not scale.",
+   "payload": {
+    "source": "This solution works, but it will not scale."
+   },
+   "tags": [
+    "tech"
+   ]
+  },
+  {
+   "id": "pp_0006",
+   "module": "paraphrase",
+   "difficulty": 7,
+   "prompt_text": "Say this three different ways: We are optimising for the wrong thing.",
+   "payload": {
+    "source": "We are optimising for the wrong thing."
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "sp_0001",
+   "module": "simplify",
+   "difficulty": 3,
+   "prompt_text": "Simplify: The utilisation of alternative transportation modalities may contribute to a reduction in urban congestion.",
+   "payload": {
+    "source": "The utilisation of alternative transportation modalities may contribute to a reduction in urban congestion."
+   },
+   "tags": [
+    "formal"
+   ]
+  },
+  {
+   "id": "sp_0002",
+   "module": "simplify",
+   "difficulty": 4,
+   "prompt_text": "Simplify: Prior to the implementation of the proposed changes, stakeholder consultation must be undertaken.",
+   "payload": {
+    "source": "Prior to the implementation of the proposed changes, stakeholder consultation must be undertaken."
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "sp_0003",
+   "module": "simplify",
+   "difficulty": 5,
+   "prompt_text": "Simplify: The system exhibits degraded performance characteristics under conditions of elevated concurrent load.",
+   "payload": {
+    "source": "The system exhibits degraded performance characteristics under conditions of elevated concurrent load."
+   },
+   "tags": [
+    "tech"
+   ]
+  },
+  {
+   "id": "sp_0004",
+   "module": "simplify",
+   "difficulty": 6,
+   "prompt_text": "Simplify: There is insufficient empirical evidence to substantiate the causal relationship that has been posited.",
+   "payload": {
+    "source": "There is insufficient empirical evidence to substantiate the causal relationship that has been posited."
+   },
+   "tags": [
+    "academic"
+   ]
+  },
+  {
+   "id": "sp_0005",
+   "module": "simplify",
+   "difficulty": 7,
+   "prompt_text": "Simplify: The organisation's failure to establish clear lines of accountability resulted in the perpetuation of suboptimal decision-making processes.",
+   "payload": {
+    "source": "The organisation's failure to establish clear lines of accountability resulted in the perpetuation of suboptimal decision-making processes."
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "sp_0006",
+   "module": "simplify",
+   "difficulty": 8,
+   "prompt_text": "Simplify: Notwithstanding the aforementioned constraints, the feasibility of the initiative remains contingent upon the availability of additional resources.",
+   "payload": {
+    "source": "Notwithstanding the aforementioned constraints, the feasibility of the initiative remains contingent upon the availability of additional resources."
+   },
+   "tags": [
+    "formal"
+   ]
+  },
+  {
+   "id": "sl_0001",
+   "module": "story_loop",
+   "difficulty": 2,
+   "prompt_text": "Tell the story of the last time you were lost. Round 1: 90 seconds.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "narrative",
+    "personal"
+   ]
+  },
+  {
+   "id": "sl_0002",
+   "module": "story_loop",
+   "difficulty": 3,
+   "prompt_text": "Tell the story of how you got your current job.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "narrative",
+    "work"
+   ]
+  },
+  {
+   "id": "sl_0003",
+   "module": "story_loop",
+   "difficulty": 4,
+   "prompt_text": "Tell the story of a decision you regret.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "narrative",
+    "personal"
+   ]
+  },
+  {
+   "id": "sl_0004",
+   "module": "story_loop",
+   "difficulty": 5,
+   "prompt_text": "Tell the story of a problem at work that took much longer to solve than expected.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "narrative",
+    "work"
+   ]
+  },
+  {
+   "id": "sl_0005",
+   "module": "story_loop",
+   "difficulty": 6,
+   "prompt_text": "Tell the story of something you changed your mind about.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "narrative",
+    "reflective"
+   ]
+  },
+  {
+   "id": "uq_0001",
+   "module": "unexpected_questions",
+   "difficulty": 2,
+   "prompt_text": "Which door do you use most often, and why that one?",
+   "tags": [
+    "absurd",
+    "concrete"
+   ]
+  },
+  {
+   "id": "uq_0002",
+   "module": "unexpected_questions",
+   "difficulty": 3,
+   "prompt_text": "What is the most useless object you own and refuse to throw away?",
+   "tags": [
+    "personal"
+   ]
+  },
+  {
+   "id": "uq_0003",
+   "module": "unexpected_questions",
+   "difficulty": 4,
+   "prompt_text": "If you had to teach someone your job in one hour, what would you cut?",
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "uq_0004",
+   "module": "unexpected_questions",
+   "difficulty": 5,
+   "prompt_text": "What sound would you miss most if it disappeared?",
+   "tags": [
+    "sensory"
+   ]
+  },
+  {
+   "id": "uq_0005",
+   "module": "unexpected_questions",
+   "difficulty": 6,
+   "prompt_text": "Who benefits from you being tired?",
+   "tags": [
+    "provocative"
+   ]
+  },
+  {
+   "id": "uq_0006",
+   "module": "unexpected_questions",
+   "difficulty": 7,
+   "prompt_text": "What is a rule you follow that nobody ever told you to follow?",
+   "tags": [
+    "reflective"
+   ]
+  },
+  {
+   "id": "uq_0007",
+   "module": "unexpected_questions",
+   "difficulty": 8,
+   "prompt_text": "What do you pretend to understand more than you do?",
+   "tags": [
+    "provocative"
+   ]
+  },
+  {
+   "id": "uq_0008",
+   "module": "unexpected_questions",
+   "difficulty": 9,
+   "prompt_text": "If your work disappeared tomorrow, who would notice second?",
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "sc_0001",
+   "module": "shadow_conversation",
+   "difficulty": 2,
+   "prompt_text": "Opener: So, how was your weekend?",
+   "payload": {
+    "opener": "So, how was your weekend?",
+    "turns": 8,
+    "persona": "friendly colleague, small talk",
+    "lines": [
+     "So, how was your weekend?",
+     "Nice. Did you manage to get any rest, or was it busy?",
+     "That sounds fair. What was the best part of it?",
+     "And did the weather cooperate where you were?",
+     "I keep meaning to do something like that. Would you recommend it?",
+     "So what is the plan for next weekend?",
+     "Do you usually plan weekends, or just let them happen?",
+     "One more thing - anything good to watch or read lately?"
+    ]
+   },
+   "tags": [
+    "small_talk"
+   ]
+  },
+  {
+   "id": "sc_0002",
+   "module": "shadow_conversation",
+   "difficulty": 4,
+   "prompt_text": "Opener: I heard you were on the migration project. How is it going?",
+   "payload": {
+    "opener": "I heard you were on the migration project. How is it going?",
+    "turns": 10,
+    "persona": "curious colleague from another team",
+    "lines": [
+     "I heard you were on the migration project. How is it going?",
+     "What part of it turned out harder than expected?",
+     "How is the team handling the timeline?",
+     "What would you do differently if you started over?",
+     "Is the old system really that bad?",
+     "Who actually decided on this approach?",
+     "What happens if the deadline slips?",
+     "What are you personally learning from it?",
+     "If someone joined the project tomorrow, what should they know first?",
+     "So overall - was it worth doing?"
+    ]
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "sc_0003",
+   "module": "shadow_conversation",
+   "difficulty": 5,
+   "prompt_text": "Opener: Can I ask you something? Do you actually like what you do?",
+   "payload": {
+    "opener": "Can I ask you something? Do you actually like what you do?",
+    "turns": 10,
+    "persona": "direct, slightly provocative acquaintance",
+    "lines": [
+     "Can I ask you something? Do you actually like what you do?",
+     "Really? What makes you say that?",
+     "When did you last feel genuinely excited about work?",
+     "If money did not matter, what would you do instead?",
+     "Is that a realistic option or just a dream?",
+     "What is stopping you, honestly?",
+     "Do the people around you know you feel this way?",
+     "What would you tell a friend in your position?",
+     "Fair enough. What is the first small step, then?",
+     "And when will you take it?"
+    ]
+   },
+   "tags": [
+    "personal"
+   ]
+  },
+  {
+   "id": "sc_0004",
+   "module": "shadow_conversation",
+   "difficulty": 6,
+   "prompt_text": "Opener: I disagree with your estimate. Convince me.",
+   "payload": {
+    "opener": "I disagree with your estimate. Convince me.",
+    "turns": 12,
+    "persona": "sceptical manager, interrupts",
+    "lines": [
+     "I disagree with your estimate. Convince me.",
+     "That is not an argument, that is a hope. Give me numbers.",
+     "You are assuming nothing goes wrong. When does anything not go wrong?",
+     "Who on your team actually agrees with this estimate?",
+     "What did you cut to get to that number?",
+     "And if I gave you half the time, what would you drop?",
+     "Why should I trust this estimate more than the last one?",
+     "What is the riskiest item in there?",
+     "Suppose you are wrong by fifty percent. What is the damage?",
+     "Alright. What guarantee can you actually give me?",
+     "Last question - what do you need from me to make this real?",
+     "Fine. Summarize your case in two sentences."
+    ]
+   },
+   "tags": [
+    "work",
+    "pressure"
+   ]
+  },
+  {
+   "id": "sc_0005",
+   "module": "shadow_conversation",
+   "difficulty": 8,
+   "prompt_text": "Opener: Let us skip the intro. What is the biggest weakness of your approach?",
+   "payload": {
+    "opener": "Let us skip the intro. What is the biggest weakness of your approach?",
+    "turns": 12,
+    "persona": "impatient expert, high standards",
+    "lines": [
+     "Let us skip the intro. What is the biggest weakness of your approach?",
+     "That is a symptom, not a weakness. Go deeper.",
+     "Why has nobody fixed that already?",
+     "What would your strongest critic say about it?",
+     "And how do you know they are wrong?",
+     "What data would change your mind?",
+     "Where does this approach break at ten times the scale?",
+     "What are you trading away to get the benefits?",
+     "If it fails, what will have been the reason?",
+     "What is your mitigation, concretely?",
+     "You have thirty seconds - why should this survive review?",
+     "Final one: what question should I have asked you?"
+    ]
+   },
+   "tags": [
+    "work",
+    "pressure"
+   ]
+  },
+  {
+   "id": "ie_0001",
+   "module": "idea_expansion",
+   "difficulty": 2,
+   "prompt_text": "Expand into five sentences: The coffee was bad.",
+   "payload": {
+    "seed": "The coffee was bad.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "daily"
+   ]
+  },
+  {
+   "id": "ie_0002",
+   "module": "idea_expansion",
+   "difficulty": 3,
+   "prompt_text": "Expand into five sentences: The meeting could have been an email.",
+   "payload": {
+    "seed": "The meeting could have been an email.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "work"
+   ]
+  },
+  {
+   "id": "ie_0003",
+   "module": "idea_expansion",
+   "difficulty": 4,
+   "prompt_text": "Expand into five sentences: I prefer working alone.",
+   "payload": {
+    "seed": "I prefer working alone.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "personal"
+   ]
+  },
+  {
+   "id": "ie_0004",
+   "module": "idea_expansion",
+   "difficulty": 5,
+   "prompt_text": "Expand into five sentences: Most documentation is written for the wrong reader.",
+   "payload": {
+    "seed": "Most documentation is written for the wrong reader.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "tech"
+   ]
+  },
+  {
+   "id": "ie_0005",
+   "module": "idea_expansion",
+   "difficulty": 6,
+   "prompt_text": "Expand into five sentences: Speed and quality are not always opposites.",
+   "payload": {
+    "seed": "Speed and quality are not always opposites.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "ie_0006",
+   "module": "idea_expansion",
+   "difficulty": 7,
+   "prompt_text": "Expand into five sentences: Most advice is autobiography in disguise.",
+   "payload": {
+    "seed": "Most advice is autobiography in disguise.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "abstract"
+   ]
+  },
+  {
+   "id": "cs_0001",
+   "module": "conversation_simulation",
+   "difficulty": 3,
+   "prompt_text": "Small talk before a meeting starts. The other person arrives early too.",
+   "payload": {
+    "scenario": "small_talk",
+    "persona": "colleague you barely know, polite, low pressure",
+    "turns": 8,
+    "user_goal": "keep the conversation alive until the meeting starts"
+   },
+   "tags": [
+    "small_talk"
+   ]
+  },
+  {
+   "id": "cs_0002",
+   "module": "conversation_simulation",
+   "difficulty": 5,
+   "prompt_text": "Job interview. First question: walk me through your background.",
+   "payload": {
+    "scenario": "interview",
+    "persona": "hiring manager, neutral tone, asks follow-ups",
+    "turns": 12,
+    "user_goal": "answer without over-explaining"
+   },
+   "tags": [
+    "work",
+    "pressure"
+   ]
+  },
+  {
+   "id": "cs_0003",
+   "module": "conversation_simulation",
+   "difficulty": 6,
+   "prompt_text": "Status update to a client whose project is two weeks late.",
+   "payload": {
+    "scenario": "client_bad_news",
+    "persona": "client, disappointed but reasonable",
+    "turns": 10,
+    "user_goal": "deliver bad news and propose a path forward"
+   },
+   "tags": [
+    "work",
+    "pressure"
+   ]
+  },
+  {
+   "id": "cs_0004",
+   "module": "conversation_simulation",
+   "difficulty": 8,
+   "prompt_text": "Technical design review. Your approach is being challenged in front of others.",
+   "payload": {
+    "scenario": "design_review",
+    "persona": "senior engineer, interrupts, asks for specifics",
+    "turns": 14,
+    "user_goal": "defend or revise your position under interruption"
+   },
+   "tags": [
+    "tech",
+    "pressure"
+   ]
+  },
+  {
+   "id": "st_0001",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "target_structure": "future_will",
+   "prompt_text": "Predict three things that will be different about your work in ten years.",
+   "tags": [
+    "structure",
+    "future"
+   ]
+  },
+  {
+   "id": "st_0002",
+   "module": "rapid_response",
+   "difficulty": 2,
+   "target_structure": "future_going_to",
+   "prompt_text": "What have you already decided to do this weekend? Only things that are settled.",
+   "tags": [
+    "structure",
+    "future"
+   ]
+  },
+  {
+   "id": "st_0003",
+   "module": "rapid_response",
+   "difficulty": 4,
+   "target_structure": "future_continuous",
+   "prompt_text": "Describe what you expect to be doing at exactly this hour next Tuesday.",
+   "tags": [
+    "structure",
+    "future"
+   ]
+  },
+  {
+   "id": "st_0004",
+   "module": "rapid_response",
+   "difficulty": 5,
+   "target_structure": "future_perfect",
+   "prompt_text": "Name three things that must be finished before the end of this year, and place each one on the calendar.",
+   "tags": [
+    "structure",
+    "future"
+   ]
+  },
+  {
+   "id": "st_0005",
+   "module": "fluency_sprint",
+   "difficulty": 2,
+   "target_structure": "past_simple",
+   "prompt_text": "Yesterday, step by step, from waking up to leaving the house.",
+   "tags": [
+    "structure",
+    "past"
+   ]
+  },
+  {
+   "id": "st_0006",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "target_structure": "past_continuous",
+   "prompt_text": "What was happening around you the last time you were interrupted by something urgent?",
+   "tags": [
+    "structure",
+    "past"
+   ]
+  },
+  {
+   "id": "st_0007",
+   "module": "rapid_response",
+   "difficulty": 5,
+   "target_structure": "past_perfect",
+   "prompt_text": "Describe a moment when you arrived somewhere and realised the situation had already changed without you.",
+   "tags": [
+    "structure",
+    "past"
+   ]
+  },
+  {
+   "id": "st_0008",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "target_structure": "used_to",
+   "prompt_text": "What was part of your daily life ten years ago and has completely disappeared from it?",
+   "tags": [
+    "structure",
+    "past"
+   ]
+  },
+  {
+   "id": "st_0009",
+   "module": "story_loop",
+   "difficulty": 4,
+   "target_structure": "would_habitual",
+   "prompt_text": "A routine from your childhood that repeated the same way every year.",
+   "payload": {
+    "round_limits_s": [
+     90,
+     60,
+     45
+    ]
+   },
+   "tags": [
+    "structure",
+    "past",
+    "narrative"
+   ]
+  },
+  {
+   "id": "st_0010",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "target_structure": "conditional_0",
+   "prompt_text": "Explain what always goes wrong when a meeting starts without an agenda.",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0011",
+   "module": "rapid_response",
+   "difficulty": 3,
+   "target_structure": "conditional_1",
+   "prompt_text": "Your main plan for tomorrow falls through. What happens next?",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0012",
+   "module": "rapid_response",
+   "difficulty": 5,
+   "target_structure": "conditional_2",
+   "prompt_text": "You are given a full year off, on full pay, starting Monday. Talk me through it.",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0013",
+   "module": "rapid_response",
+   "difficulty": 7,
+   "target_structure": "conditional_3",
+   "prompt_text": "What is the one decision that would have completely changed your career?",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0014",
+   "module": "rapid_response",
+   "difficulty": 8,
+   "target_structure": "conditional_3",
+   "prompt_text": "Think of a mistake nobody noticed. What was the alternative outcome, and why did it not happen?",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0015",
+   "module": "rapid_response",
+   "difficulty": 9,
+   "target_structure": "conditional_mixed",
+   "prompt_text": "Name a choice you made years ago that still shapes your daily life, and describe the version of today where you chose otherwise.",
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0016",
+   "module": "rapid_response",
+   "difficulty": 4,
+   "target_structure": "modal_speculation_present",
+   "prompt_text": "A colleague has not replied to anything all day and their status is green. Give me your theories.",
+   "tags": [
+    "structure",
+    "modal"
+   ]
+  },
+  {
+   "id": "st_0017",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "target_structure": "modal_speculation_past",
+   "prompt_text": "You come home and the front door is open, but nothing is missing. Explain what happened before you arrived.",
+   "tags": [
+    "structure",
+    "modal"
+   ]
+  },
+  {
+   "id": "st_0018",
+   "module": "fluency_sprint",
+   "difficulty": 5,
+   "target_structure": "passive_voice",
+   "prompt_text": "How an object on your desk was manufactured and delivered to you. You do not know who did any of it.",
+   "tags": [
+    "structure",
+    "passive"
+   ]
+  },
+  {
+   "id": "st_0019",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "target_structure": "reported_speech",
+   "prompt_text": "Someone gave you advice you ignored. Tell me what they said and what you answered, without quoting anyone directly.",
+   "tags": [
+    "structure",
+    "reported"
+   ]
+  },
+  {
+   "id": "st_0020",
+   "module": "describe_without_word",
+   "difficulty": 5,
+   "target_structure": "relative_clauses",
+   "prompt_text": "Describe three people in your team precisely enough that a stranger could identify them in a crowded room.",
+   "payload": {
+    "target": "names",
+    "forbidden_words": []
+   },
+   "tags": [
+    "structure",
+    "relative"
+   ]
+  },
+  {
+   "id": "st_0021",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "target_structure": "gerund_vs_infinitive",
+   "prompt_text": "At work: what do you avoid, what do you keep postponing, what do you refuse, and what do you plan?",
+   "tags": [
+    "structure",
+    "verb_patterns"
+   ]
+  },
+  {
+   "id": "st_0022",
+   "module": "rapid_response",
+   "difficulty": 6,
+   "target_structure": "wish_if_only",
+   "prompt_text": "What would you change about how this year has gone so far, if changing it were possible?",
+   "tags": [
+    "structure",
+    "wish"
+   ]
+  },
+  {
+   "id": "st_0023",
+   "module": "idea_expansion",
+   "difficulty": 7,
+   "target_structure": "conditional_2",
+   "prompt_text": "Expand into five sentences: Nobody would notice if this rule disappeared.",
+   "payload": {
+    "seed": "Nobody would notice if this rule disappeared.",
+    "target_sentences": 5
+   },
+   "tags": [
+    "structure",
+    "conditional"
+   ]
+  },
+  {
+   "id": "st_0024",
+   "module": "simplify",
+   "difficulty": 6,
+   "target_structure": "passive_voice",
+   "prompt_text": "Simplify: The organisation implemented a policy whereby all requests are reviewed by two independent assessors prior to approval.",
+   "payload": {
+    "source": "The organisation implemented a policy whereby all requests are reviewed by two independent assessors prior to approval."
+   },
+   "tags": [
+    "structure",
+    "passive"
+   ]
+  }
+ ]
 }

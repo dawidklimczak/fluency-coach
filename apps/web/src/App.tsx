@@ -4,13 +4,19 @@ import { Recorder } from "./audio/recorder";
 import { BrowserVad } from "./audio/vad";
 import DrillScreen from "./drills/DrillScreen";
 import CalibrationScreen from "./screens/CalibrationScreen";
+import ObservationsScreen from "./screens/ObservationsScreen";
+import ProgressScreen from "./screens/ProgressScreen";
 import StartScreen from "./screens/StartScreen";
+import StructuresScreen from "./screens/StructuresScreen";
 import SummaryScreen from "./screens/SummaryScreen";
 
 type View =
   | { name: "start" }
   | { name: "calibrate" }
   | { name: "loading" }
+  | { name: "progress" }
+  | { name: "structures" }
+  | { name: "observations" }
   | {
       name: "drill";
       sessionId: number;
@@ -38,11 +44,11 @@ export default function App() {
       .catch((e) => setFatal(`Backend unavailable: ${e}`));
   }, []);
 
-  const startSession = useCallback(async (module: string) => {
+  const startSession = useCallback(async (module: string, structureFilter: string | null) => {
     setView({ name: "loading" });
     try {
       const [session, status, vad, recorder] = await Promise.all([
-        api.createSession(module),
+        api.createSession(module, structureFilter),
         api.calibrationStatus(),
         BrowserVad.create(),
         Recorder.create(),
@@ -107,8 +113,17 @@ export default function App() {
           calibrated={calibrated}
           onStartSession={startSession}
           onCalibrate={() => setView({ name: "calibrate" })}
+          onProgress={() => setView({ name: "progress" })}
+          onStructures={() => setView({ name: "structures" })}
+          onObservations={() => setView({ name: "observations" })}
         />
       );
+    case "progress":
+      return <ProgressScreen onBack={() => setView({ name: "start" })} />;
+    case "structures":
+      return <StructuresScreen onBack={() => setView({ name: "start" })} />;
+    case "observations":
+      return <ObservationsScreen onBack={() => setView({ name: "start" })} />;
     case "calibrate":
       return (
         <CalibrationScreen

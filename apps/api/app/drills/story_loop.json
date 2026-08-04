@@ -1,0 +1,17 @@
+{
+  "id": "story_loop",
+  "name": "Story Loop",
+  "stimulus": "text",
+  "prep_time_s": 0,
+  "min_speak_s": 10,
+  "max_speak_s": 90,
+  "auto_stop_silence_s": 0,
+  "rounds": 3,
+  "round_speak_s": [90, 60, 45],
+  "attempts_per_session": 2,
+  "primary_metrics": ["mean_length_of_run", "filler_rate"],
+  "target": {},
+  "llm_eval": false,
+  "show_timer": true,
+  "show_transcript_during": false
+}

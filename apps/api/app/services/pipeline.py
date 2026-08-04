@@ -14,6 +14,7 @@ from . import (
     forbidden,
     indices,
     lang_metrics,
+    llm,
     metrics as metrics_svc,
     structures as structures_svc,
     transcription,
@@ -203,6 +204,23 @@ def process_attempt(attempt_id: int) -> None:
         attempt.metrics = m
         attempt.status = "done"
         db.commit()
+
+        # ocena jakościowa LLM po zapisaniu metryk (spec 8 pkt 2) - jej brak
+        # ani opóźnienie nigdy nie blokują próby
+        if task and transcript:
+            try:
+                from .drills import get_drill_config
+
+                if get_drill_config(task.module).get("llm_eval"):
+                    evaluation = llm.evaluate_attempt(
+                        task.module, task.prompt_text, task.payload, transcript
+                    )
+                    if evaluation is not None:
+                        attempt.llm_eval = evaluation
+                        db.commit()
+            except Exception:
+                logger.exception("Ocena LLM nie powiodła się dla próby %s", attempt_id)
+                db.rollback()
 
         if session:
             all_attempts = (

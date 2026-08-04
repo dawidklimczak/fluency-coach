@@ -12,9 +12,10 @@ class Settings(BaseSettings):
         env_file=REPO_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    # LLM przez OpenAI - jeden klucz dla Whispera i ocen/generacji
+    # (decyzja 2026-08-04, zamiast Anthropic ze spec sekcji 8)
     openai_api_key: str = ""
-    anthropic_api_key: str = ""
-    anthropic_model: str = ""
+    openai_llm_model: str = "gpt-4o-mini"
 
     # 1 = nie wywołuj Whispera, metryki językowe puste (czasowe działają z VAD)
     mock_transcription: bool = False

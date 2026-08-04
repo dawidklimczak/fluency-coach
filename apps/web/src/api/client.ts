@@ -1,3 +1,9 @@
+export interface StructureHint {
+  label: string;
+  hint: string | null;
+  example: string | null;
+}
+
 export interface TaskDto {
   id: string;
   module: string;
@@ -5,6 +11,8 @@ export interface TaskDto {
   target_structure: string | null;
   prompt_text: string;
   payload: Record<string, unknown> | null;
+  structure_mode: "explicit" | "implicit" | null;
+  structure_hint: StructureHint | null;
 }
 
 export interface DrillConfig {
@@ -16,6 +24,7 @@ export interface DrillConfig {
   max_speak_s: number;
   auto_stop_silence_s: number;
   rounds: number;
+  round_speak_s?: number[];
   attempts_per_session: number;
   primary_metrics: string[];
   show_timer: boolean;
@@ -71,11 +80,16 @@ export const api = {
     );
   },
 
-  createSession: (module: string) =>
+  structures: () =>
+    fetch("/api/sessions/structures").then((r) =>
+      json<{ id: string; label: string }[]>(r)
+    ),
+
+  createSession: (module: string, structureFilter?: string | null) =>
     fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ module }),
+      body: JSON.stringify({ module, structure_filter: structureFilter ?? null }),
     }).then((r) =>
       json<{
         session_id: number;
@@ -99,6 +113,7 @@ export const api = {
       t0_offset_samples: number;
       attempt_index: number;
       round_index: number;
+      structure_mode?: "explicit" | "implicit" | null;
     }
   ) => {
     const fd = new FormData();
@@ -111,6 +126,41 @@ export const api = {
 
   getAttempt: (attemptId: number) =>
     fetch(`/api/attempts/${attemptId}`).then((r) => json<AttemptResult>(r)),
+
+  progress: (module: string, days = 30) =>
+    fetch(`/api/stats/progress?module=${encodeURIComponent(module)}&days=${days}`).then(
+      (r) =>
+        json<{
+          module: string;
+          days: number;
+          series: Record<string, number | string | null>[];
+        }>(r)
+    ),
+
+  structuresHeatmap: () =>
+    fetch("/api/stats/structures").then((r) =>
+      json<{
+        baseline_ttfw: number | null;
+        structures: {
+          structure: string;
+          attempts: number;
+          avoidance: number | null;
+          avoidance_explicit: number | null;
+          avoidance_implicit: number | null;
+          ttfw_structured: number | null;
+          pre_structure_pause: number | null;
+        }[];
+      }>(r)
+    ),
+
+  observations: () =>
+    fetch("/api/stats/observations").then((r) =>
+      json<{
+        generated_at: string | null;
+        stale: boolean;
+        items: { pattern: string; example: string | null; note: string | null }[];
+      }>(r)
+    ),
 
   endSession: (sessionId: number) =>
     fetch(`/api/sessions/${sessionId}/end`, { method: "POST" }).then((r) =>

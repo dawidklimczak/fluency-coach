@@ -3,16 +3,29 @@ import { api, ModuleInfo } from "../api/client";
 
 interface Props {
   calibrated: boolean;
-  onStartSession: (module: string) => void;
+  onStartSession: (module: string, structureFilter: string | null) => void;
   onCalibrate: () => void;
+  onProgress: () => void;
+  onStructures: () => void;
+  onObservations: () => void;
 }
 
-export default function StartScreen({ calibrated, onStartSession, onCalibrate }: Props) {
+export default function StartScreen({
+  calibrated,
+  onStartSession,
+  onCalibrate,
+  onProgress,
+  onStructures,
+  onObservations,
+}: Props) {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const [structures, setStructures] = useState<{ id: string; label: string }[]>([]);
+  const [filter, setFilter] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.modules().then(setModules).catch((e) => setError(String(e)));
+    api.structures().then(setStructures).catch(() => {});
   }, []);
 
   return (
@@ -35,11 +48,29 @@ export default function StartScreen({ calibrated, onStartSession, onCalibrate }:
         </div>
       ) : (
         <div className="flex w-full max-w-md flex-col gap-3">
+          {structures.length > 0 && (
+            <label className="mb-2 flex items-center justify-between gap-4 text-sm text-neutral-500">
+              <span>grammar structure filter</span>
+              <select
+                className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-300"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="">off</option>
+                {structures.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {modules.map((m) => (
             <button
               key={m.id}
               className="flex items-center justify-between rounded border border-neutral-800 px-6 py-4 text-left hover:border-neutral-500"
-              onClick={() => onStartSession(m.id)}
+              onClick={() => onStartSession(m.id, filter || null)}
             >
               <span className="text-lg">{m.name}</span>
               <span className="font-mono text-sm text-neutral-500">
@@ -47,12 +78,21 @@ export default function StartScreen({ calibrated, onStartSession, onCalibrate }:
               </span>
             </button>
           ))}
-          <button
-            className="mt-6 self-center text-sm text-neutral-600 underline"
-            onClick={onCalibrate}
-          >
-            recalibrate
-          </button>
+
+          <div className="mt-6 flex justify-center gap-6 text-sm text-neutral-600">
+            <button className="underline" onClick={onProgress}>
+              progress
+            </button>
+            <button className="underline" onClick={onStructures}>
+              structures
+            </button>
+            <button className="underline" onClick={onObservations}>
+              weekly notes
+            </button>
+            <button className="underline" onClick={onCalibrate}>
+              recalibrate
+            </button>
+          </div>
         </div>
       )}
     </div>
