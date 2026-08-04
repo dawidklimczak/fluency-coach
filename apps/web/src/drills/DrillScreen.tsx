@@ -135,7 +135,10 @@ export default function DrillScreen({
       setElapsed(el);
       const silence =
         (recorder.samplesRecorded - lastSpeechSampleRef.current) / SAMPLE_RATE;
-      const canAutoStop = firstSpeechRef.current && el >= config.min_speak_s;
+      // auto_stop_silence_s <= 0 wyłącza auto-stop po ciszy - cały czas do dyspozycji
+      const autoStopEnabled = config.auto_stop_silence_s > 0;
+      const canAutoStop =
+        autoStopEnabled && firstSpeechRef.current && el >= config.min_speak_s;
       if (el >= config.max_speak_s) stopAndSubmit();
       else if (canAutoStop && silence >= config.auto_stop_silence_s) stopAndSubmit();
     }, 100);
@@ -311,10 +314,10 @@ export default function DrillScreen({
       </div>
 
       <button
-        className="fixed bottom-8 right-8 rounded border border-neutral-700 px-4 py-2 text-neutral-400"
+        className="fixed bottom-8 right-8 rounded border border-neutral-700 px-5 py-2 text-neutral-300 hover:border-neutral-400"
         onClick={stopAndSubmit}
       >
-        ■
+        ■ finish
       </button>
     </div>
   );
