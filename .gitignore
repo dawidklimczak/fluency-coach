@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+
+# Data
+data/app.db
+data/audio/
+
+# Models (downloaded at setup)
+apps/api/app/assets/silero_vad.onnx
+apps/web/public/models/silero_vad.onnx
+
+# OS
+Thumbs.db
+.DS_Store

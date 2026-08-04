@@ -1,0 +1,16 @@
+{
+  "id": "describe_without_word",
+  "name": "Describe Without the Word",
+  "stimulus": "text",
+  "prep_time_s": 0,
+  "min_speak_s": 10,
+  "max_speak_s": 30,
+  "auto_stop_silence_s": 2.5,
+  "rounds": 1,
+  "attempts_per_session": 10,
+  "primary_metrics": ["ttfw", "mid_clause_pause_rate"],
+  "target": {},
+  "llm_eval": true,
+  "show_timer": true,
+  "show_transcript_during": false
+}

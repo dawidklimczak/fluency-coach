@@ -1,0 +1,16 @@
+{
+  "id": "fluency_sprint",
+  "name": "Fluency Sprint",
+  "stimulus": "text",
+  "prep_time_s": 0,
+  "min_speak_s": 60,
+  "max_speak_s": 120,
+  "auto_stop_silence_s": 4.0,
+  "rounds": 1,
+  "attempts_per_session": 3,
+  "primary_metrics": ["phonation_time_ratio", "long_pause_count"],
+  "target": {},
+  "llm_eval": false,
+  "show_timer": true,
+  "show_transcript_during": false
+}
