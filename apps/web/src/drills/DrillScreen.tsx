@@ -292,9 +292,14 @@ export default function DrillScreen({
       </p>
 
       {forbidden.length > 0 && (
-        <p className="mt-6 text-xl text-neutral-500">
-          {forbidden.join(" · ")}
-        </p>
+        <div className="mt-8 text-center">
+          <p className="text-sm uppercase tracking-wide text-red-400">
+            do not use these words
+          </p>
+          <p className="mt-2 text-xl text-neutral-500 line-through decoration-red-400/60">
+            {forbidden.join(" · ")}
+          </p>
+        </div>
       )}
 
       <div className="fixed bottom-0 left-0 h-3 w-full bg-neutral-800">
