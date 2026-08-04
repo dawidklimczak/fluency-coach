@@ -55,8 +55,8 @@ export default function CalibrationScreen({ onDone }: Props) {
       {state === "idle" && (
         <>
           <p className="max-w-md text-center text-neutral-300">
-            Zachowaj ciszę przez {CALIBRATION_S} sekund. Mierzony jest szum tła
-            Twojego pomieszczenia i mikrofonu.
+            Stay silent for {CALIBRATION_S} seconds. This measures the noise floor
+            of your room and microphone.
           </p>
           <button className="btn" onClick={start}>
             Start
@@ -67,20 +67,20 @@ export default function CalibrationScreen({ onDone }: Props) {
       {state === "recording" && (
         <div className="text-center">
           <div className="font-mono text-8xl tabular-nums">{secondsLeft}</div>
-          <p className="mt-4 text-neutral-500">cisza...</p>
+          <p className="mt-4 text-neutral-500">silence...</p>
         </div>
       )}
 
-      {state === "uploading" && <p className="text-neutral-400">Analiza...</p>}
+      {state === "uploading" && <p className="text-neutral-400">Analyzing...</p>}
 
       {state === "done" && result && (
         <>
           <div className="text-center font-mono text-neutral-300">
-            <p>szum tła: {result.noise_floor_db.toFixed(1)} dB</p>
-            <p>próg VAD: {result.vad_threshold.toFixed(3)}</p>
+            <p>noise floor: {result.noise_floor_db.toFixed(1)} dB</p>
+            <p>VAD threshold: {result.vad_threshold.toFixed(3)}</p>
           </div>
           <button className="btn" onClick={onDone}>
-            Gotowe
+            Done
           </button>
         </>
       )}
@@ -89,7 +89,7 @@ export default function CalibrationScreen({ onDone }: Props) {
         <>
           <p className="max-w-md text-center text-red-400">{error}</p>
           <button className="btn" onClick={() => setState("idle")}>
-            Spróbuj ponownie
+            Try again
           </button>
         </>
       )}

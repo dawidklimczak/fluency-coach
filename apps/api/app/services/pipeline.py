@@ -16,6 +16,25 @@ logger = logging.getLogger(__name__)
 
 FATIGUE_TTFW_RISE = 1.4  # +40% względem pierwszych 5 prób (spec 5.3)
 
+# Whisper z promptem dysfluencyjnym halucynuje treść na ciszy (np. zapętlone
+# "it's, it's, ..."). Obrona: (1) nie transkrybuj, gdy VAD nie widzi mowy,
+# (2) odrzuć słowa, których timestampy nie pokrywają się z segmentami mowy.
+MIN_PHONATION_FOR_TRANSCRIPT_S = 0.3
+WORD_SEGMENT_TOLERANCE_S = 0.3
+
+
+def filter_hallucinated_words(
+    words: list[dict], segments: list[tuple[float, float]]
+) -> list[dict]:
+    """Zostawia tylko słowa nakładające się (z tolerancją) na segmenty mowy z VAD."""
+    kept = []
+    for w in words:
+        ws = w["start"] - WORD_SEGMENT_TOLERANCE_S
+        we = w["end"] + WORD_SEGMENT_TOLERANCE_S
+        if any(ws < seg_end and we > seg_start for seg_start, seg_end in segments):
+            kept.append(w)
+    return kept
+
 
 def attach_punctuation(transcript: str, words: list[dict]) -> list[dict]:
     """Whisper zwraca słowa bez interpunkcji; doklejamy ją z pełnego tekstu.
@@ -72,11 +91,22 @@ def process_attempt(attempt_id: int) -> None:
 
         segments = vad.get_vad().speech_segments(audio, threshold=threshold)
 
-        tr = transcription.transcribe(attempt.audio_path)
-        transcript = tr["text"] if tr else None
-        words = tr["words"] if tr else None
-        if transcript and words:
-            words = attach_punctuation(transcript, words)
+        phonation = sum(e - s for s, e in segments)
+        transcript = None
+        words = None
+        if phonation >= MIN_PHONATION_FOR_TRANSCRIPT_S:
+            tr = transcription.transcribe(attempt.audio_path)
+            if tr:
+                transcript = tr["text"]
+                words = attach_punctuation(transcript, tr["words"])
+                kept = filter_hallucinated_words(words, segments)
+                if len(kept) < len(words):
+                    logger.info(
+                        "Odrzucono %d/%d słów poza segmentami mowy (halucynacja)",
+                        len(words) - len(kept), len(words),
+                    )
+                    words = kept
+                    transcript = " ".join(w["word"] for w in kept) if kept else None
 
         cfg = seed_config()
         m = metrics_svc.compute_metrics(

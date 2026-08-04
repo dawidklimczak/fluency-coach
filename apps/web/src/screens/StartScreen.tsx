@@ -26,11 +26,11 @@ export default function StartScreen({ calibrated, onStartSession, onCalibrate }:
       {!calibrated ? (
         <div className="flex flex-col items-center gap-4">
           <p className="max-w-md text-center text-neutral-400">
-            Przed pierwszą sesją: 10 sekund ciszy do kalibracji progu detekcji mowy
-            w Twoim pomieszczeniu.
+            Before your first session: 10 seconds of silence to calibrate speech
+            detection for your room.
           </p>
           <button className="btn" onClick={onCalibrate}>
-            Kalibruj
+            Calibrate
           </button>
         </div>
       ) : (
@@ -43,7 +43,7 @@ export default function StartScreen({ calibrated, onStartSession, onCalibrate }:
             >
               <span className="text-lg">{m.name}</span>
               <span className="font-mono text-sm text-neutral-500">
-                poziom {m.difficulty} · {m.attempts_per_session} prób
+                level {m.difficulty} · {m.attempts_per_session} attempts
               </span>
             </button>
           ))}
@@ -51,7 +51,7 @@ export default function StartScreen({ calibrated, onStartSession, onCalibrate }:
             className="mt-6 self-center text-sm text-neutral-600 underline"
             onClick={onCalibrate}
           >
-            ponowna kalibracja
+            recalibrate
           </button>
         </div>
       )}

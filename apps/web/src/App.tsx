@@ -35,7 +35,7 @@ export default function App() {
         setCalibrated(s.calibrated);
         setView({ name: "start" });
       })
-      .catch((e) => setFatal(`Backend niedostępny: ${e}`));
+      .catch((e) => setFatal(`Backend unavailable: ${e}`));
   }, []);
 
   const startSession = useCallback(async (module: string) => {
@@ -82,7 +82,7 @@ export default function App() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
         <p className="max-w-lg text-center text-red-400">{fatal}</p>
         <button className="btn" onClick={() => window.location.reload()}>
-          Odśwież
+          Reload
         </button>
       </div>
     );
@@ -92,7 +92,7 @@ export default function App() {
     case "loading":
       return (
         <div className="flex min-h-screen items-center justify-center text-neutral-500">
-          Ładowanie...
+          Loading...
         </div>
       );
     case "start":

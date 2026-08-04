@@ -146,20 +146,18 @@ def end_session(session_id: int, db: Session = Depends(get_db)):
 
     if fatigue:
         interpretation = (
-            "Czas startu wyraźnie wzrósł pod koniec - to zmęczenie poznawcze, "
-            "nie regres. Sesja zakończona we właściwym momencie."
+            "Start time rose sharply near the end - that is cognitive fatigue, "
+            "not regression. The session ended at the right moment."
         )
     elif baseline is not None and summary["median_ttfw"] is not None:
         if summary["median_ttfw"] < baseline * 0.9:
-            interpretation = "Start szybszy niż mediana z ostatnich 7 dni."
+            interpretation = "Faster starts than your 7-day median."
         elif summary["median_ttfw"] > baseline * 1.1:
-            interpretation = (
-                "Start wolniejszy niż zwykle - pojedyncza sesja, nie trend."
-            )
+            interpretation = "Slower starts than usual - a single session, not a trend."
         else:
-            interpretation = "Wynik w granicach normy z ostatnich 7 dni."
+            interpretation = "Within your normal range from the last 7 days."
     else:
-        interpretation = "Za mało historii na porównanie - to buduje linię bazową."
+        interpretation = "Not enough history to compare - this builds your baseline."
     summary["interpretation"] = interpretation
 
     return {"summary": summary, "fatigue_detected": fatigue}

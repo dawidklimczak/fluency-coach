@@ -177,7 +177,7 @@ export default function DrillScreen({
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
         <p className="text-red-400">{errorMsg}</p>
         <button className="btn" onClick={() => onSessionEnd("aborted")}>
-          Wróć do startu
+          Back to start
         </button>
       </div>
     );
@@ -186,7 +186,7 @@ export default function DrillScreen({
   if (phase === "process") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-2xl text-neutral-400">Przetwarzanie...</p>
+        <p className="text-2xl text-neutral-400">Processing...</p>
       </div>
     );
   }
@@ -198,28 +198,28 @@ export default function DrillScreen({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
         <div className="grid grid-cols-3 gap-12 text-center">
-          <Stat label="czas startu" value={m.ttfw != null ? `${m.ttfw.toFixed(2)} s` : "—"} />
+          <Stat label="time to start" value={m.ttfw != null ? `${m.ttfw.toFixed(2)} s` : "—"} />
           <Stat
-            label="najdłuższy odcinek"
+            label="longest run"
             value={
               m.max_length_of_run != null
-                ? `${m.max_length_of_run} słów`
+                ? `${m.max_length_of_run} words`
                 : m.longest_speech_segment_s != null
                   ? `${m.longest_speech_segment_s.toFixed(1)} s`
                   : "—"
             }
           />
-          <Stat label="długie pauzy" value={String(m.long_pause_count ?? 0)} />
+          <Stat label="long pauses" value={String(m.long_pause_count ?? 0)} />
         </div>
 
         {failed && (
           <p className="text-lg text-red-400">
-            Użyte słowo zakazane: {(m.forbidden_hits as string[]).join(", ")}
+            Forbidden word used: {(m.forbidden_hits as string[]).join(", ")}
           </p>
         )}
         {fatigue && (
           <p className="text-lg text-amber-400">
-            Czas startu wyraźnie wzrósł - to zmęczenie. Kończymy sesję.
+            Your start time has clearly risen - that is fatigue. Ending the session.
           </p>
         )}
 
@@ -244,7 +244,7 @@ export default function DrillScreen({
                 setShowTranscript(!showTranscript);
               }}
             >
-              {showTranscript ? "ukryj transkrypcję" : "pokaż transkrypcję"}
+              {showTranscript ? "hide transcript" : "show transcript"}
             </button>
             {showTranscript && (
               <p className="mt-2 text-neutral-300">{result.transcript}</p>
@@ -253,10 +253,10 @@ export default function DrillScreen({
         )}
 
         <button className="btn" onClick={goNext}>
-          dalej
+          next
         </button>
         <p className="text-sm text-neutral-600">
-          próba {attemptIndex} / {config.attempts_per_session}
+          attempt {attemptIndex} / {config.attempts_per_session}
         </p>
       </div>
     );

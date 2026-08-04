@@ -72,6 +72,27 @@ def test_forbidden_phrase():
     assert find_forbidden("stuck in a traffic jam", ["traffic jam"]) == ["traffic jam"]
 
 
+def test_hallucination_filter_drops_words_outside_speech():
+    from app.services.pipeline import filter_hallucinated_words
+
+    segments = [(1.0, 3.0)]
+    words = [
+        w("real", 1.2, 1.5),
+        w("also", 2.9, 3.2),        # lekko wystaje - tolerancja ma to zachować
+        w("hallucinated", 6.0, 6.4),  # daleko poza mową
+        w("it's", 8.0, 8.2),
+    ]
+    kept = filter_hallucinated_words(words, segments)
+    assert [x["word"] for x in kept] == ["real", "also"]
+
+
+def test_hallucination_filter_empty_segments_drops_all():
+    from app.services.pipeline import filter_hallucinated_words
+
+    words = [w("i", 0.5, 0.6), w("don't", 0.6, 0.8), w("know", 0.8, 1.0)]
+    assert filter_hallucinated_words(words, []) == []
+
+
 def test_no_speech_at_all():
     m = compute_metrics([], 0.0, 10.0, None, None)
     assert m["ttfw"] is None

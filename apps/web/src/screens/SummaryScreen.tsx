@@ -20,27 +20,27 @@ export default function SummaryScreen({ summary, fatigue, onBack }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-      <h2 className="text-xl text-neutral-300">Podsumowanie sesji</h2>
+      <h2 className="text-xl text-neutral-300">Session summary</h2>
 
       <div className="grid grid-cols-3 gap-12 text-center">
         <Stat
-          label="mediana czasu startu"
+          label="median time to start"
           value={summary.median_ttfw != null ? `${summary.median_ttfw.toFixed(2)} s` : "—"}
         />
         <Stat
-          label="mediana odcinka"
+          label="median run length"
           value={
             summary.median_mean_length_of_run != null
-              ? `${summary.median_mean_length_of_run.toFixed(1)} słów`
+              ? `${summary.median_mean_length_of_run.toFixed(1)} words`
               : "—"
           }
         />
-        <Stat label="długie pauzy" value={String(summary.long_pause_total)} />
+        <Stat label="long pauses" value={String(summary.long_pause_total)} />
       </div>
 
       {summary.baseline_7d_median_ttfw != null && (
         <p className="text-sm text-neutral-500">
-          mediana z 7 dni: {summary.baseline_7d_median_ttfw.toFixed(2)} s
+          7-day median: {summary.baseline_7d_median_ttfw.toFixed(2)} s
         </p>
       )}
 
@@ -52,12 +52,12 @@ export default function SummaryScreen({ summary, fatigue, onBack }: Props) {
               <XAxis
                 dataKey="attempt_index"
                 stroke="#525252"
-                label={{ value: "próba", position: "insideBottom", offset: -4, fill: "#525252" }}
+                label={{ value: "attempt", position: "insideBottom", offset: -4, fill: "#525252" }}
               />
               <YAxis stroke="#525252" unit=" s" width={50} />
               <Tooltip
                 contentStyle={{ background: "#171717", border: "1px solid #404040" }}
-                labelFormatter={(v) => `próba ${v}`}
+                labelFormatter={(v) => `attempt ${v}`}
               />
               <Line
                 type="monotone"
@@ -74,14 +74,14 @@ export default function SummaryScreen({ summary, fatigue, onBack }: Props) {
 
       {fatigue && (
         <p className="max-w-md text-center text-amber-400">
-          Sesja zakończona z powodu zmęczenia poznawczego.
+          Session ended due to cognitive fatigue.
         </p>
       )}
 
       <p className="max-w-md text-center text-neutral-300">{summary.interpretation}</p>
 
       <button className="btn" onClick={onBack}>
-        Wróć do startu
+        Back to start
       </button>
     </div>
   );
