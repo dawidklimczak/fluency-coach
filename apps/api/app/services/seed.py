@@ -4,7 +4,7 @@ from functools import lru_cache
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..models import ModuleState, Task, User
+from ..models import Attempt, ModuleState, Task, User
 
 
 @lru_cache
@@ -54,6 +54,13 @@ def ensure_seeded(db: Session) -> None:
                 source="seed",
             )
         )
+
+    # zadania seed usunięte z pliku znikają też z bazy (o ile nie mają prób)
+    file_ids = {t["id"] for t in data.get("tasks", [])}
+    used_ids = {r[0] for r in db.query(Attempt.task_id).distinct().all()}
+    for task_id, row in existing.items():
+        if row.source == "seed" and task_id not in file_ids and task_id not in used_ids:
+            db.delete(row)
 
     modules = {t["module"] for t in data.get("tasks", [])}
     existing_states = {row[0] for row in db.query(ModuleState.module).all()}

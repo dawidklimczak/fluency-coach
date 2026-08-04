@@ -4,7 +4,7 @@ import { Recorder } from "../audio/recorder";
 import { BrowserVad } from "../audio/vad";
 import { encodeWav, SAMPLE_RATE } from "../audio/wav";
 
-type Phase = "prep" | "listen" | "record" | "process" | "feedback" | "error";
+type Phase = "prep" | "record" | "process" | "feedback" | "error";
 
 interface Props {
   sessionId: number;
@@ -18,14 +18,7 @@ interface Props {
 
 const HINT_PREP_S = 4;
 
-function taskLines(task: TaskDto): string[] | null {
-  const lines = task.payload?.lines as string[] | undefined;
-  return Array.isArray(lines) && lines.length > 0 ? lines : null;
-}
-
 function totalRounds(task: TaskDto, config: DrillConfig): number {
-  const lines = taskLines(task);
-  if (lines) return lines.length;
   const limits = task.payload?.round_limits_s as number[] | undefined;
   if (Array.isArray(limits) && limits.length > 0) return limits.length;
   return config.rounds;
@@ -36,34 +29,6 @@ function roundMaxSpeak(task: TaskDto, config: DrillConfig, round: number): numbe
     (task.payload?.round_limits_s as number[] | undefined) ?? config.round_speak_s;
   if (Array.isArray(limits) && limits[round - 1] != null) return limits[round - 1];
   return config.max_speak_s;
-}
-
-function speak(text: string, onEnd: () => void): () => void {
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  const voice = speechSynthesis
-    .getVoices()
-    .find((v) => v.lang === "en-US" && v.localService) ??
-    speechSynthesis.getVoices().find((v) => v.lang.startsWith("en"));
-  if (voice) u.voice = voice;
-  u.rate = 1.0;
-  let done = false;
-  const finish = () => {
-    if (!done) {
-      done = true;
-      onEnd();
-    }
-  };
-  u.onend = finish;
-  u.onerror = finish;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-  // Safari/Chrome potrafią zgubić onend - zabezpieczenie czasowe
-  const guard = window.setTimeout(finish, 1000 + text.length * 90);
-  return () => {
-    window.clearTimeout(guard);
-    speechSynthesis.cancel();
-  };
 }
 
 export default function DrillScreen({
@@ -95,20 +60,16 @@ export default function DrillScreen({
   const showTranscriptRef = useRef(false);
   const recordingIndexRef = useRef(0); // numer nagrania w sesji (krzywa zmęczenia)
   const roundRef = useRef(1);
-  const cancelSpeechRef = useRef<(() => void) | null>(null);
 
   const rounds = totalRounds(task, config);
   const maxSpeak = roundMaxSpeak(task, config, roundIndex);
   const remaining = Math.max(0, maxSpeak - elapsed);
   const timeLow = remaining <= maxSpeak * 0.2;
-  const lines = taskLines(task);
-  const currentLine = lines ? lines[roundIndex - 1] : null;
 
   const exitSession = useCallback(() => {
     stoppedRef.current = true;
     recorder.onVadFrame = null;
     recorder.stop();
-    cancelSpeechRef.current?.();
     onSessionEnd("aborted");
   }, [recorder, onSessionEnd]);
 
@@ -185,17 +146,6 @@ export default function DrillScreen({
       roundRef.current = round;
       setResult(null);
 
-      const roundLines = taskLines(t);
-      if (roundLines) {
-        // Shadow Conversation: odtwórz kwestię AI, nagrywanie startuje po niej
-        setPhase("listen");
-        cancelSpeechRef.current = speak(roundLines[round - 1], () => {
-          cancelSpeechRef.current = null;
-          startRecording();
-        });
-        return;
-      }
-
       const hintPrep =
         t.structure_mode === "explicit" && t.structure_hint ? HINT_PREP_S : 0;
       const prepSeconds = round === 1 ? config.prep_time_s + hintPrep : 0;
@@ -211,7 +161,6 @@ export default function DrillScreen({
 
   useEffect(() => {
     beginRound(firstTask, 1);
-    return () => cancelSpeechRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -434,21 +383,6 @@ export default function DrillScreen({
     );
   }
 
-  if (phase === "listen") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-8">
-        <ExitButton onClick={exitSession} />
-        <p className="mb-6 text-sm uppercase tracking-wide text-neutral-500">
-          {roundIndex} / {rounds}
-        </p>
-        <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
-          {currentLine}
-        </p>
-        <p className="mt-12 text-neutral-500">…</p>
-      </div>
-    );
-  }
-
   // record: bodziec + timer + pasek mowy. Nic więcej (spec sekcja 11).
   return (
     <div
@@ -465,7 +399,7 @@ export default function DrillScreen({
       )}
 
       <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
-        {currentLine ?? task.prompt_text}
+        {task.prompt_text}
       </p>
 
       {rounds > 1 && (
