@@ -9,7 +9,16 @@ import statistics
 
 from ..db import db_session
 from ..models import Attempt, Task, TrainingSession
-from . import adaptation, forbidden, metrics as metrics_svc, transcription, vad
+from . import (
+    adaptation,
+    forbidden,
+    indices,
+    lang_metrics,
+    metrics as metrics_svc,
+    structures as structures_svc,
+    transcription,
+    vad,
+)
 from .seed import seed_config
 
 logger = logging.getLogger(__name__)
@@ -118,6 +127,62 @@ def process_attempt(attempt_id: int) -> None:
             fillers=cfg.get("fillers", []),
         )
         m["t0_offset_samples"] = (attempt.metrics or {}).get("t0_offset_samples", 0)
+        if (attempt.metrics or {}).get("structure_mode"):
+            m["structure_mode"] = attempt.metrics["structure_mode"]
+
+        if transcript:
+            m.update(
+                lang_metrics.compute_language_metrics(
+                    transcript, words, cfg.get("repair_markers", [])
+                )
+            )
+
+        m["complexity_fluency_tradeoff"] = indices.complexity_fluency_tradeoff(m)
+        if session:
+            m["automaticity_index"] = indices.automaticity_index(
+                db, session.module, attempt.id, m
+            )
+
+        # metryki struktur 5.4 - tylko gdy zadanie wymaga struktury i jest transkrypcja
+        if task and task.target_structure and transcript:
+            m.update(
+                structures_svc.structure_metrics(
+                    task.target_structure, transcript, words
+                )
+            )
+
+        # Paraphrase: dystans leksykalny między rundami tej samej próby (spec 7.1)
+        if task and task.module == "paraphrase" and transcript and attempt.round_index > 1:
+            prev_rounds = (
+                db.query(Attempt)
+                .filter(
+                    Attempt.session_id == attempt.session_id,
+                    Attempt.task_id == attempt.task_id,
+                    Attempt.round_index < attempt.round_index,
+                    Attempt.status == "done",
+                )
+                .order_by(Attempt.round_index)
+                .all()
+            )
+            distances = [
+                lang_metrics.lexical_distance(p.transcript, transcript)
+                for p in prev_rounds
+                if p.transcript
+            ]
+            distances = [d for d in distances if d is not None]
+            if distances:
+                m["lexical_distance_min"] = min(distances)
+                # trzy wersje muszą mieć parami dystans > 0.5
+                if attempt.round_index >= 3:
+                    all_pairs = distances + [
+                        d
+                        for i, a in enumerate(prev_rounds)
+                        for b in prev_rounds[i + 1 :]
+                        if a.transcript and b.transcript
+                        for d in [lang_metrics.lexical_distance(a.transcript, b.transcript)]
+                        if d is not None
+                    ]
+                    m["paraphrase_pass"] = bool(all_pairs) and min(all_pairs) > 0.5
 
         # Describe Without the Word: użycie słowa zakazanego = fail
         if task and task.module == "describe_without_word" and transcript:

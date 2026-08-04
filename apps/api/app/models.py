@@ -43,6 +43,7 @@ class TrainingSession(Base):
     ended_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     ended_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_difficulty: Mapped[int] = mapped_column(Integer, default=1)
+    structure_filter: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Attempt(Base):

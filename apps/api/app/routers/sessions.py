@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Attempt, Task, TrainingSession, now_iso
-from ..services import adaptation, task_select
+from ..services import adaptation, structure_mode as structure_mode_svc, task_select
 from ..services.drills import available_modules, get_drill_config
 from ..services.pipeline import detect_fatigue
+from ..services.seed import structures as seed_structures
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -19,15 +20,34 @@ class CreateSessionBody(BaseModel):
     structure_filter: str | None = None
 
 
-def _task_dict(task: Task) -> dict:
-    return {
+def _task_dict(task: Task, db: Session | None = None) -> dict:
+    out = {
         "id": task.id,
         "module": task.module,
         "difficulty": task.difficulty,
         "target_structure": task.target_structure,
         "prompt_text": task.prompt_text,
         "payload": task.payload,
+        "structure_mode": None,
+        "structure_hint": None,
     }
+    # tryb explicit/implicit rozstrzygany przy budowaniu sesji (spec 7.2);
+    # w trybie jawnym frontend dostaje nazwę struktury i przykład z seed
+    if task.target_structure and db is not None:
+        mode = structure_mode_svc.choose_mode(db, task.target_structure)
+        out["structure_mode"] = mode
+        if mode == "explicit":
+            s = next(
+                (x for x in seed_structures() if x["id"] == task.target_structure),
+                None,
+            )
+            if s:
+                out["structure_hint"] = {
+                    "label": s["label"],
+                    "hint": s.get("hint"),
+                    "example": s.get("example"),
+                }
+    return out
 
 
 @router.post("")
@@ -39,7 +59,10 @@ def create_session(body: CreateSessionBody, db: Session = Depends(get_db)):
 
     difficulty = adaptation.get_difficulty(db, body.module)
     session = TrainingSession(
-        user_id=1, module=body.module, target_difficulty=difficulty
+        user_id=1,
+        module=body.module,
+        target_difficulty=difficulty,
+        structure_filter=body.structure_filter,
     )
     db.add(session)
     db.commit()
@@ -53,7 +76,7 @@ def create_session(body: CreateSessionBody, db: Session = Depends(get_db)):
         "session_id": session.id,
         "module": body.module,
         "difficulty": difficulty,
-        "first_task": _task_dict(task),
+        "first_task": _task_dict(task, db),
         "drill_config": cfg,
     }
 
@@ -73,10 +96,12 @@ def next_task(session_id: int, db: Session = Depends(get_db)):
     }
     exclude = task_select.recently_used_task_ids(db, session.module) | used_in_session
     difficulty = adaptation.get_difficulty(db, session.module)
-    task = task_select.pick_task(db, session.module, difficulty, exclude)
+    task = task_select.pick_task(
+        db, session.module, difficulty, exclude, session.structure_filter
+    )
     if task is None:
         raise HTTPException(409, "Brak zadań")
-    return {"task": _task_dict(task), "drill_config": cfg, "difficulty": difficulty}
+    return {"task": _task_dict(task, db), "drill_config": cfg, "difficulty": difficulty}
 
 
 @router.post("/{session_id}/end")
@@ -170,3 +195,20 @@ def modules(db: Session = Depends(get_db)):
         m["difficulty"] = adaptation.get_difficulty(db, m["id"])
         out.append(m)
     return out
+
+
+@router.get("/structures")
+def structures_list(db: Session = Depends(get_db)):
+    """Struktury dostępne w filtrze na ekranie startu - tylko te z zadaniami."""
+    with_tasks = {
+        r[0]
+        for r in db.query(Task.target_structure)
+        .filter(Task.target_structure.isnot(None))
+        .distinct()
+        .all()
+    }
+    return [
+        {"id": s["id"], "label": s["label"]}
+        for s in seed_structures()
+        if s["id"] in with_tasks
+    ]

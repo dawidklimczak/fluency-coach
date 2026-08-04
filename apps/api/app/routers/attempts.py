@@ -32,6 +32,10 @@ async def create_attempt(
     if session is None:
         raise HTTPException(404, "Nie ma takiej sesji")
 
+    initial_metrics: dict = {"t0_offset_samples": t0_offset_samples}
+    if meta.get("structure_mode") in ("explicit", "implicit"):
+        initial_metrics["structure_mode"] = meta["structure_mode"]
+
     attempt = Attempt(
         session_id=session_id,
         task_id=task_id,
@@ -39,7 +43,7 @@ async def create_attempt(
         round_index=round_index,
         t0_iso=meta.get("t0_iso") or now_iso(),
         status="processing",
-        metrics={"t0_offset_samples": t0_offset_samples},
+        metrics=initial_metrics,
     )
     db.add(attempt)
     db.commit()

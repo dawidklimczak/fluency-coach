@@ -31,8 +31,29 @@ def init_db() -> None:
     from .services.seed import ensure_seeded
 
     Base.metadata.create_all(engine)
+    _migrate(engine)
     with SessionLocal() as db:
         ensure_seeded(db)
+
+
+def _migrate(engine) -> None:
+    """Dodawanie kolumn do istniejącej bazy SQLite (create_all ich nie dodaje)."""
+    from sqlalchemy import text
+
+    added_columns = {
+        "sessions": [("structure_filter", "TEXT")],
+    }
+    with engine.begin() as conn:
+        for table, cols in added_columns.items():
+            existing = {
+                row[1]
+                for row in conn.execute(text(f"PRAGMA table_info({table})"))
+            }
+            for name, sql_type in cols:
+                if name not in existing:
+                    conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+                    )
 
 
 def db_session() -> Session:
