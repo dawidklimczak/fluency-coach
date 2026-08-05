@@ -210,7 +210,7 @@ def structures_list(db: Session = Depends(get_db)):
         .all()
     }
     return [
-        {"id": s["id"], "label": s["label"]}
+        {"id": s["id"], "label": s["label"], "cheatsheet": s.get("cheatsheet")}
         for s in seed_structures()
         if s["id"] in with_tasks
     ]

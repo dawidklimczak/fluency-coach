@@ -4,6 +4,19 @@ export interface StructureHint {
   example: string | null;
 }
 
+export interface StructureCheatsheet {
+  form: string;
+  use: string[];
+  examples: string[];
+  mistake: string | null;
+}
+
+export interface StructureOption {
+  id: string;
+  label: string;
+  cheatsheet: StructureCheatsheet | null;
+}
+
 export interface TaskDto {
   id: string;
   module: string;
@@ -112,9 +125,7 @@ export const api = {
   },
 
   structures: () =>
-    fetch("/api/sessions/structures").then((r) =>
-      json<{ id: string; label: string }[]>(r)
-    ),
+    fetch("/api/sessions/structures").then((r) => json<StructureOption[]>(r)),
 
   learningSessionStart: () =>
     fetch("/api/learning-sessions", { method: "POST" }).then((r) =>
