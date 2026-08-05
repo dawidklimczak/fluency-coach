@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { api, ModuleInfo } from "../api/client";
+import { api, LearningSessionState, ModuleInfo } from "../api/client";
 import { getTimeLimitOverrides, setTimeLimit } from "../settings";
 
 interface Props {
   calibrated: boolean;
-  onStartSession: (module: string, structureFilter: string | null) => void;
+  openSession: LearningSessionState | null;
+  onOpenSession: () => void;
   onCalibrate: () => void;
   onProgress: () => void;
   onStructures: () => void;
@@ -13,15 +14,14 @@ interface Props {
 
 export default function StartScreen({
   calibrated,
-  onStartSession,
+  openSession,
+  onOpenSession,
   onCalibrate,
   onProgress,
   onStructures,
   onObservations,
 }: Props) {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const [structures, setStructures] = useState<{ id: string; label: string }[]>([]);
-  const [filter, setFilter] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number>>(
     getTimeLimitOverrides()
@@ -30,7 +30,6 @@ export default function StartScreen({
 
   useEffect(() => {
     api.modules().then(setModules).catch((e) => setError(String(e)));
-    api.structures().then(setStructures).catch(() => {});
   }, []);
 
   return (
@@ -52,41 +51,24 @@ export default function StartScreen({
           </button>
         </div>
       ) : (
-        <div className="flex w-full max-w-md flex-col gap-3">
-          {structures.length > 0 && (
-            <label className="mb-2 flex items-center justify-between gap-4 text-sm text-neutral-500">
-              <span>grammar structure filter</span>
-              <select
-                className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-300"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="">off</option>
-                {structures.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <div className="flex w-full max-w-md flex-col items-center gap-6">
+          <button
+            className="w-full rounded border border-neutral-600 px-8 py-5 text-xl text-neutral-100 hover:border-neutral-300"
+            onClick={onOpenSession}
+          >
+            {openSession
+              ? `Resume session #${openSession.number}`
+              : "Start session"}
+          </button>
+          {openSession && (
+            <p className="text-sm text-neutral-500">
+              open since {openSession.started_at.slice(0, 16).replace("T", " ")} ·{" "}
+              {openSession.attempts} attempts so far
+            </p>
           )}
 
-          {modules.map((m) => (
-            <button
-              key={m.id}
-              className="flex items-center justify-between rounded border border-neutral-800 px-6 py-4 text-left hover:border-neutral-500"
-              onClick={() => onStartSession(m.id, filter || null)}
-            >
-              <span className="text-lg">{m.name}</span>
-              <span className="font-mono text-sm text-neutral-500">
-                level {m.difficulty} · {m.attempts_per_session} attempts ·{" "}
-                {overrides[m.id] ?? m.max_speak_s}s
-              </span>
-            </button>
-          ))}
-
           {showSettings && (
-            <div className="mt-4 rounded border border-neutral-800 p-4">
+            <div className="w-full rounded border border-neutral-800 p-4">
               <p className="mb-3 text-sm uppercase tracking-wide text-neutral-500">
                 speaking time limit (seconds, empty = default)
               </p>
@@ -119,7 +101,7 @@ export default function StartScreen({
             </div>
           )}
 
-          <div className="mt-6 flex justify-center gap-6 text-sm text-neutral-600">
+          <div className="flex justify-center gap-6 text-sm text-neutral-600">
             <button className="underline" onClick={() => setShowSettings(!showSettings)}>
               time limits
             </button>
@@ -130,7 +112,7 @@ export default function StartScreen({
               structures
             </button>
             <button className="underline" onClick={onObservations}>
-              weekly notes
+              observations
             </button>
             <button className="underline" onClick={onCalibrate}>
               recalibrate

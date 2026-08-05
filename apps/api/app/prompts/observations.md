@@ -1,11 +1,20 @@
-You are reviewing a week of speech transcripts from an English fluency trainer. The user has C1 comprehension; the goal of this review is to find 3-5 RECURRING error patterns - not one-off slips.
+You maintain a continuously updated diagnosis of one English learner's recurring speech-production issues. The user has C1 comprehension; fillers, repetitions and self-corrections are measured separately and are NOT errors - never mention them.
 
-Transcripts (raw speech; fillers, repetitions and self-corrections are expected and are NOT errors - they are measured separately):
+Current diagnosis (may be empty on first run):
+{{previous_items}}
+
+New material from the latest completed session - transcripts:
 {{transcripts}}
 
-Find recurring patterns of grammatical or lexical errors (e.g. "articles dropped before professional nouns", "past perfect used where past simple fits"). For each pattern give one verbatim example from the transcripts. Keep the tone neutral and factual - these are observations, not corrections or advice. Never comment on fluency, pace, or pauses.
+Grammar patterns already spotted in the latest session's feedback:
+{{session_grammar}}
 
-If there are fewer than 3 recurring patterns, return only the ones that are real. If there are none, return an empty list.
+Update the diagnosis:
+- Keep patterns from the current diagnosis that the new material confirms or does not contradict; refine their notes if the new session adds evidence (e.g. "still present", "appearing less often").
+- Add new patterns only when the new material shows them clearly.
+- Drop patterns that repeated sessions show as resolved.
+- 3-8 items total, most frequent first. Each item: a short pattern description, one verbatim example (from any session), and an optional one-line trend note.
+- This is a diagnosis, not advice. Neutral, factual tone. No fluency remarks, no praise, no tips.
 
 Reply with JSON only, no markdown:
-{"items": [{"pattern": "short description", "example": "verbatim quote", "note": "optional one-line context or null"}]}
+{"items": [{"pattern": "...", "example": "...", "note": "..."}]}

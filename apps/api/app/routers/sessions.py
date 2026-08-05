@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 class CreateSessionBody(BaseModel):
     module: str
     structure_filter: str | None = None
+    learning_session_id: int | None = None
 
 
 def _task_dict(task: Task, db: Session | None = None) -> dict:
@@ -63,6 +64,7 @@ def create_session(body: CreateSessionBody, db: Session = Depends(get_db)):
         module=body.module,
         target_difficulty=difficulty,
         structure_filter=body.structure_filter,
+        learning_session_id=body.learning_session_id,
     )
     db.add(session)
     db.commit()

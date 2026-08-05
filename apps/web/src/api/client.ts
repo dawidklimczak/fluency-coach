@@ -45,14 +45,44 @@ export interface AttemptResult {
   transcript: string | null;
 }
 
-export interface SessionSummary {
+export interface LearningSessionState {
+  id: number;
+  number: number;
+  started_at: string;
   attempts: number;
+  modules_done: string[];
+  fatigue_detected: boolean;
+}
+
+export interface GrammarNote {
+  pattern: string;
+  example: string | null;
+  note: string | null;
+}
+
+export interface SessionFeedback {
+  comment: string;
+  went_well: string[];
+  to_improve: string[];
+  grammar: GrammarNote[];
+}
+
+export interface LearningSessionSummary {
+  number: number;
+  started_at: string;
+  ended_at: string;
+  attempts: number;
+  modules: {
+    module: string;
+    attempts: number;
+    median_ttfw: number | null;
+    median_mean_length_of_run: number | null;
+    long_pause_total: number;
+  }[];
   median_ttfw: number | null;
-  median_mean_length_of_run: number | null;
-  long_pause_total: number;
-  baseline_7d_median_ttfw: number | null;
-  interpretation: string;
-  fatigue_curve: { attempt_index: number; ttfw: number | null; filler_rate: number | null }[];
+  fatigue_detected: boolean;
+  fatigue_curve: { index: number; ttfw: number | null; filler_rate: number | null }[];
+  feedback: SessionFeedback | null;
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -86,11 +116,34 @@ export const api = {
       json<{ id: string; label: string }[]>(r)
     ),
 
-  createSession: (module: string, structureFilter?: string | null) =>
+  learningSessionStart: () =>
+    fetch("/api/learning-sessions", { method: "POST" }).then((r) =>
+      json<LearningSessionState & { resumed: boolean }>(r)
+    ),
+
+  learningSessionCurrent: () =>
+    fetch("/api/learning-sessions/current").then((r) =>
+      json<{ open: boolean } & Partial<LearningSessionState>>(r)
+    ),
+
+  learningSessionEnd: (id: number) =>
+    fetch(`/api/learning-sessions/${id}/end`, { method: "POST" }).then((r) =>
+      json<{ summary: LearningSessionSummary }>(r)
+    ),
+
+  createSession: (
+    module: string,
+    structureFilter?: string | null,
+    learningSessionId?: number | null
+  ) =>
     fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ module, structure_filter: structureFilter ?? null }),
+      body: JSON.stringify({
+        module,
+        structure_filter: structureFilter ?? null,
+        learning_session_id: learningSessionId ?? null,
+      }),
     }).then((r) =>
       json<{
         session_id: number;
@@ -165,6 +218,6 @@ export const api = {
 
   endSession: (sessionId: number) =>
     fetch(`/api/sessions/${sessionId}/end`, { method: "POST" }).then((r) =>
-      json<{ summary: SessionSummary; fatigue_detected: boolean }>(r)
+      json<{ summary: unknown; fatigue_detected: boolean }>(r)
     ),
 };

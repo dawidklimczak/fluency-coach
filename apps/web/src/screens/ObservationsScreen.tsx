@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
-// spec 5.5: powtarzalne wzorce błędów, raz w tygodniu, poza sesją treningową
+// ciągła diagnoza: najczęstsze błędy i wzorce z całej dotychczasowej nauki,
+// aktualizowana po każdej zakończonej sesji
 export default function ObservationsScreen({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<
     { pattern: string; example: string | null; note: string | null }[]
@@ -25,24 +26,30 @@ export default function ObservationsScreen({ onBack }: { onBack: () => void }) {
     <div className="min-h-screen p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl text-neutral-300">Weekly observations</h1>
+          <h1 className="text-xl text-neutral-300">Observations</h1>
           <button className="text-sm text-neutral-500 underline" onClick={onBack}>
             back
           </button>
         </div>
+
+        <p className="text-sm text-neutral-500">
+          A running diagnosis built from all your sessions: the errors you make
+          most often and the patterns that keep coming back. Updated every time
+          you finish a session.
+        </p>
 
         {loading && <p className="text-neutral-500">Loading...</p>}
         {error && <p className="text-red-400">{error}</p>}
 
         {!loading && !error && items.length === 0 && (
           <p className="text-neutral-500">
-            Nothing yet - observations appear after a week of sessions.
+            Nothing yet - finish your first session to start the diagnosis.
           </p>
         )}
 
         {generatedAt && (
           <p className="text-sm text-neutral-600">
-            generated {generatedAt.slice(0, 10)}
+            last updated {generatedAt.slice(0, 10)}
           </p>
         )}
 

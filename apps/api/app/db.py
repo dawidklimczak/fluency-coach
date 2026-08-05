@@ -41,7 +41,10 @@ def _migrate(engine) -> None:
     from sqlalchemy import text
 
     added_columns = {
-        "sessions": [("structure_filter", "TEXT")],
+        "sessions": [
+            ("structure_filter", "TEXT"),
+            ("learning_session_id", "INTEGER"),
+        ],
     }
     with engine.begin() as conn:
         for table, cols in added_columns.items():

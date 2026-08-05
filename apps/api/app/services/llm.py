@@ -111,6 +111,19 @@ class ObservationsResult(BaseModel):
     items: list[ObservationItem]
 
 
+class GrammarNote(BaseModel):
+    pattern: str
+    example: str | None = None
+    note: str | None = None
+
+
+class SessionFeedback(BaseModel):
+    comment: str
+    went_well: list[str] = []
+    to_improve: list[str] = []
+    grammar: list[GrammarNote] = []
+
+
 # --- ocena jakościowa po próbie (spec 8 pkt 2) ------------------------------
 
 

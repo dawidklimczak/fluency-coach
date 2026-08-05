@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
-from .routers import attempts, calibrate, sessions, stats, tasks
+from .routers import attempts, calibrate, learning_sessions, sessions, stats, tasks
 from .services.retention import cleanup_old_audio
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(learning_sessions.router)
 app.include_router(sessions.router)
 app.include_router(attempts.router)
 app.include_router(calibrate.router)

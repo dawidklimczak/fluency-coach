@@ -33,11 +33,27 @@ class Task(Base):
     source: Mapped[str] = mapped_column(Text, default="seed")
 
 
+class LearningSession(Base):
+    """Sesja nauki: otwierana przez użytkownika, mieści dowolną liczbę
+    przebiegów drilli (TrainingSession); zamykana z podsumowaniem i feedbackiem."""
+
+    __tablename__ = "learning_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=1)
+    started_at: Mapped[str] = mapped_column(Text, default=now_iso)
+    ended_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class TrainingSession(Base):
     __tablename__ = "sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    learning_session_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("learning_sessions.id"), nullable=True
+    )
     module: Mapped[str] = mapped_column(Text)
     started_at: Mapped[str] = mapped_column(Text, default=now_iso)
     ended_at: Mapped[str | None] = mapped_column(Text, nullable=True)
