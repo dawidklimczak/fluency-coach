@@ -6,7 +6,7 @@ import json
 import logging
 import statistics
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -17,7 +17,7 @@ from ..models import (
     TrainingSession,
     now_iso,
 )
-from ..services import llm
+from ..services import llm, task_gen
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ def _update_observations(
 
 
 @router.post("/{ls_id}/end")
-def end(ls_id: int, db: Session = Depends(get_db)):
+def end(ls_id: int, background: BackgroundTasks, db: Session = Depends(get_db)):
     ls = db.get(LearningSession, ls_id)
     if ls is None:
         raise HTTPException(404, "Nie ma takiej sesji nauki")
@@ -232,6 +232,10 @@ def end(ls_id: int, db: Session = Depends(get_db)):
             _update_observations(db, transcripts, feedback)
         except Exception:
             logger.exception("Aktualizacja obserwacji po sesji %s nie powiodła się", ls_id)
+        # automat: uzupełnij w tle pulę zadań dla używanych modułów (spec 8 pkt 1)
+        used_modules = [m["module"] for m in summary["modules"]]
+        if used_modules:
+            background.add_task(task_gen.top_up_modules, used_modules)
     else:
         summary = ls.summary or summary
 
