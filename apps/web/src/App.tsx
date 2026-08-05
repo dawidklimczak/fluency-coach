@@ -3,6 +3,7 @@ import { api, DrillConfig, SessionSummary, TaskDto } from "./api/client";
 import { Recorder } from "./audio/recorder";
 import { BrowserVad } from "./audio/vad";
 import DrillScreen from "./drills/DrillScreen";
+import { getTimeLimit } from "./settings";
 import CalibrationScreen from "./screens/CalibrationScreen";
 import ObservationsScreen from "./screens/ObservationsScreen";
 import ProgressScreen from "./screens/ProgressScreen";
@@ -54,11 +55,20 @@ export default function App() {
         Recorder.create(),
       ]);
       recorderRef.current = recorder;
+      // lokalne nadpisanie limitu czasu mówienia (ustawienia na ekranie startu)
+      const override = getTimeLimit(module);
+      const config = override
+        ? {
+            ...session.drill_config,
+            max_speak_s: override,
+            min_speak_s: Math.min(session.drill_config.min_speak_s, override),
+          }
+        : session.drill_config;
       setView({
         name: "drill",
         sessionId: session.session_id,
         firstTask: session.first_task,
-        config: session.drill_config,
+        config,
         recorder,
         vad,
         vadThreshold: status.vad_threshold,

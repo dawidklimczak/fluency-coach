@@ -34,6 +34,7 @@ export interface ModuleInfo {
   id: string;
   name: string;
   attempts_per_session: number;
+  max_speak_s: number;
   difficulty: number;
 }
 

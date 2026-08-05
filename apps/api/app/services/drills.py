@@ -23,6 +23,11 @@ def get_drill_config(module: str) -> dict:
 
 def available_modules() -> list[dict]:
     return [
-        {"id": c["id"], "name": c["name"], "attempts_per_session": c["attempts_per_session"]}
+        {
+            "id": c["id"],
+            "name": c["name"],
+            "attempts_per_session": c["attempts_per_session"],
+            "max_speak_s": c["max_speak_s"],
+        }
         for c in load_drill_configs().values()
     ]

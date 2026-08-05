@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ModuleInfo } from "../api/client";
+import { getTimeLimitOverrides, setTimeLimit } from "../settings";
 
 interface Props {
   calibrated: boolean;
@@ -21,6 +22,10 @@ export default function StartScreen({
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [structures, setStructures] = useState<{ id: string; label: string }[]>([]);
   const [filter, setFilter] = useState<string>("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, number>>(
+    getTimeLimitOverrides()
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,12 +79,50 @@ export default function StartScreen({
             >
               <span className="text-lg">{m.name}</span>
               <span className="font-mono text-sm text-neutral-500">
-                level {m.difficulty} · {m.attempts_per_session} attempts
+                level {m.difficulty} · {m.attempts_per_session} attempts ·{" "}
+                {overrides[m.id] ?? m.max_speak_s}s
               </span>
             </button>
           ))}
 
+          {showSettings && (
+            <div className="mt-4 rounded border border-neutral-800 p-4">
+              <p className="mb-3 text-sm uppercase tracking-wide text-neutral-500">
+                speaking time limit (seconds, empty = default)
+              </p>
+              <div className="flex flex-col gap-2">
+                {modules.map((m) => (
+                  <label
+                    key={m.id}
+                    className="flex items-center justify-between text-sm text-neutral-400"
+                  >
+                    <span>{m.name}</span>
+                    <input
+                      type="number"
+                      min={5}
+                      max={300}
+                      className="w-24 rounded border border-neutral-800 bg-neutral-950 px-2 py-1 text-right font-mono text-neutral-200"
+                      placeholder={String(m.max_speak_s)}
+                      value={overrides[m.id] ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setTimeLimit(m.id, v);
+                        setOverrides(getTimeLimitOverrides());
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-neutral-600">
+                Story Loop rounds scale proportionally (90/60/45 at the default 90s).
+              </p>
+            </div>
+          )}
+
           <div className="mt-6 flex justify-center gap-6 text-sm text-neutral-600">
+            <button className="underline" onClick={() => setShowSettings(!showSettings)}>
+              time limits
+            </button>
             <button className="underline" onClick={onProgress}>
               progress
             </button>

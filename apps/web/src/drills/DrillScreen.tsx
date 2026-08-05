@@ -27,8 +27,39 @@ function totalRounds(task: TaskDto, config: DrillConfig): number {
 function roundMaxSpeak(task: TaskDto, config: DrillConfig, round: number): number {
   const limits =
     (task.payload?.round_limits_s as number[] | undefined) ?? config.round_speak_s;
-  if (Array.isArray(limits) && limits[round - 1] != null) return limits[round - 1];
+  if (Array.isArray(limits) && limits[round - 1] != null) {
+    // nadpisany max_speak_s skaluje limity rund proporcjonalnie
+    // (np. Story Loop 90/60/45 przy limicie 60 daje 60/40/30)
+    const factor = config.max_speak_s / limits[0];
+    return Math.max(5, Math.round(limits[round - 1] * factor));
+  }
   return config.max_speak_s;
+}
+
+// polecenie ("Say this three different ways") oddzielone wizualnie od treści,
+// którą użytkownik ma wypowiedzieć
+function promptParts(task: TaskDto): { instruction: string | null; content: string } {
+  const payload = task.payload ?? {};
+  const source = (payload.source ?? payload.seed) as string | undefined;
+  if (task.module === "paraphrase" && source) {
+    return { instruction: "Say this three different ways", content: source };
+  }
+  if (task.module === "simplify" && source) {
+    return { instruction: "Simplify", content: source };
+  }
+  if (task.module === "idea_expansion" && source) {
+    return { instruction: "Expand into five sentences", content: source };
+  }
+  if (task.module === "describe_without_word") {
+    const m = task.prompt_text.match(/^describe:\s*(.+)$/i);
+    if (m) return { instruction: "Describe", content: m[1] };
+  }
+  if (task.module === "story_loop") {
+    // dopisek "Round 1: 90 seconds." jest zbędny - rundy i timer widać na ekranie
+    const content = task.prompt_text.replace(/\s*Round 1: \d+ seconds\.?\s*$/i, "");
+    return { instruction: null, content };
+  }
+  return { instruction: null, content: task.prompt_text };
 }
 
 export default function DrillScreen({
@@ -247,6 +278,7 @@ export default function DrillScreen({
   }, [phase, goNext]);
 
   const forbidden = (task.payload?.forbidden_words as string[] | undefined) ?? [];
+  const { instruction, content } = promptParts(task);
 
   if (phase === "error") {
     return (
@@ -364,8 +396,13 @@ export default function DrillScreen({
         <div className="mb-12 font-mono text-7xl tabular-nums text-neutral-500">
           {prepLeft}
         </div>
+        {instruction && (
+          <p className="mb-4 text-sm uppercase tracking-widest text-neutral-500">
+            {instruction}
+          </p>
+        )}
         <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
-          {task.prompt_text}
+          {content}
         </p>
         {task.structure_mode === "explicit" && task.structure_hint && (
           <div className="mt-10 max-w-xl text-center">
@@ -398,8 +435,13 @@ export default function DrillScreen({
         </div>
       )}
 
+      {instruction && (
+        <p className="mb-4 text-sm uppercase tracking-widest text-neutral-500">
+          {instruction}
+        </p>
+      )}
       <p className="max-w-3xl text-center text-4xl font-medium leading-snug">
-        {task.prompt_text}
+        {content}
       </p>
 
       {rounds > 1 && (
