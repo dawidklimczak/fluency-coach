@@ -98,6 +98,48 @@ export interface LearningSessionSummary {
   feedback: SessionFeedback | null;
 }
 
+export interface ReadingToken {
+  text: string;
+  newline_before: boolean;
+  start: number | null;
+  end: number | null;
+  status: "spoken" | "unclear" | "missed";
+  wpm?: number | null;
+  heard?: string | null;
+}
+
+export interface ReadingMetrics {
+  target_wpm: number;
+  wpm: number | null;
+  wpm_articulation: number | null;
+  wpm_vs_target: number | null;
+  steadiness: number | null;
+  fastest_wpm: number | null;
+  slowest_wpm: number | null;
+  reference_words: number;
+  words_read: number;
+  spoken_count: number;
+  unclear_count: number;
+  missed_count: number;
+  extra_count: number;
+  accuracy: number | null;
+  duration_s: number;
+  phonation_s: number;
+  phonation_ratio: number | null;
+  pause_count: number;
+  longest_pauses: { before: string; duration: number }[];
+  transcript_missing: boolean;
+}
+
+export interface ReadingResult {
+  reading_id: number;
+  status: "processing" | "done" | "error";
+  target_wpm: number;
+  metrics: ReadingMetrics | null;
+  words: ReadingToken[] | null;
+  transcript: string | null;
+}
+
 export interface AuthState {
   password_required: boolean;
   authenticated: boolean;
@@ -260,6 +302,35 @@ export const api = {
       json<{ attempt_id: number }>(r)
     );
   },
+
+  submitReading: (
+    wav: Blob,
+    meta: { reference_text: string; target_wpm: number }
+  ) => {
+    const fd = new FormData();
+    fd.append("audio", wav, "reading.wav");
+    fd.append("payload", JSON.stringify(meta));
+    return fetch("/api/reading", { method: "POST", body: fd }).then((r) =>
+      json<{ reading_id: number }>(r)
+    );
+  },
+
+  getReading: (readingId: number) =>
+    fetch(`/api/reading/${readingId}`).then((r) => json<ReadingResult>(r)),
+
+  readingHistory: () =>
+    fetch("/api/reading").then((r) =>
+      json<
+        {
+          reading_id: number;
+          created_at: string;
+          target_wpm: number;
+          wpm: number | null;
+          accuracy: number | null;
+          words_read: number | null;
+        }[]
+      >(r)
+    ),
 
   getAttempt: (attemptId: number) =>
     fetch(`/api/attempts/${attemptId}`).then((r) => json<AttemptResult>(r)),

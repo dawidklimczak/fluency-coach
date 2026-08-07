@@ -13,6 +13,7 @@ from .routers import (
     auth as auth_router,
     calibrate,
     learning_sessions,
+    reading,
     sessions,
     settings as settings_router,
     stats,
@@ -90,6 +91,7 @@ app.include_router(learning_sessions.router)
 app.include_router(sessions.router)
 app.include_router(attempts.router)
 app.include_router(calibrate.router)
+app.include_router(reading.router)
 app.include_router(stats.router)
 app.include_router(tasks.router)
 

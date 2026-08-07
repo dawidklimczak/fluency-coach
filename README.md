@@ -40,6 +40,23 @@ Paraphrase · Simplify · Idea Expansion · Story Loop
 All eight are one state machine with different JSON configuration in
 `apps/api/app/drills/`.
 
+### Reading pace trainer
+
+A separate tool: paste any text, set a target pace, read it aloud. You get your
+overall words-per-minute (gross and excluding pauses), a steadiness figure, and a
+**speed map** — the text re-rendered with each word tinted by its local pace
+relative to your target, so you can see where you rush and where you stall.
+
+Reference text and transcript are aligned with `difflib`, which also surfaces
+skipped words and words that came through as something else — a cheap proxy for
+unclear articulation, though it also catches plain transcription errors, so it is
+presented as "did not come through", never as a pronunciation verdict.
+
+Reading aloud has no lexical-retrieval component, so these attempts are stored
+separately and **never** enter the spontaneous-speech statistics: they cannot skew
+z-scores, difficulty adaptation, or the structure heat map. Recordings here are
+processed in a temporary file and deleted immediately.
+
 ## How a session works
 
 You open a **learning session**, run as many drills inside it as you like, then close

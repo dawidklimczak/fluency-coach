@@ -20,11 +20,16 @@ def transcription_enabled() -> bool:
     return bool(openai_api_key()) and not get_settings().mock_transcription
 
 
-def transcribe(audio_path: Path) -> dict | None:
+def transcribe(audio_path: Path, prompt: str | None = None) -> dict | None:
     """Zwraca {"text": str, "words": [{word, start, end}]} albo None.
 
     None = brak transkrypcji (brak klucza, mock albo błąd) - metryki czasowe
     z VAD nadal działają, próba nigdy nie jest blokowana przez Whispera.
+
+    prompt=None użyje promptu dysfluencyjnego (spec 4.4). Trener czytania
+    podaje pusty łańcuch: przy czytaniu z kartki podpowiedzenie Whisperowi
+    czegokolwiek skłaniałoby go do "usłyszenia" oczekiwanego tekstu i ukryłoby
+    błędy wymowy, które właśnie chcemy zmierzyć.
     """
     if not transcription_enabled():
         return None
@@ -32,7 +37,11 @@ def transcribe(audio_path: Path) -> dict | None:
         from openai import OpenAI
 
         client = OpenAI(api_key=openai_api_key())
-        disfluency_prompt = seed_config().get("whisper_disfluency_prompt", "")
+        disfluency_prompt = (
+            seed_config().get("whisper_disfluency_prompt", "")
+            if prompt is None
+            else prompt
+        )
         with open(audio_path, "rb") as f:
             result = client.audio.transcriptions.create(
                 model=WHISPER_MODEL,

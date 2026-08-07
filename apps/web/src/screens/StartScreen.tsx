@@ -7,6 +7,7 @@ interface Props {
   onOpenSession: () => void;
   onCalibrate: () => void;
   onSettings: () => void;
+  onReading: () => void;
   onProgress: () => void;
   onStructures: () => void;
   onObservations: () => void;
@@ -18,6 +19,7 @@ export default function StartScreen({
   onOpenSession,
   onCalibrate,
   onSettings,
+  onReading,
   onProgress,
   onStructures,
   onObservations,
@@ -76,6 +78,18 @@ export default function StartScreen({
               {openSession.attempts} attempts so far
             </p>
           )}
+
+          {/* osobne narzędzie: czytanie z kartki nie jest mową spontaniczną,
+              więc nie wchodzi do sesji ani do statystyk automatyzacji */}
+          <button
+            className="w-full rounded border border-neutral-800 px-6 py-4 text-left hover:border-neutral-500"
+            onClick={onReading}
+          >
+            <span className="text-lg text-neutral-200">Reading pace trainer</span>
+            <span className="mt-1 block text-sm text-neutral-500">
+              read a text aloud, see where you speed up and slow down
+            </span>
+          </button>
 
           <div className="flex flex-wrap justify-center gap-6 text-sm text-neutral-600">
             <button className="underline" onClick={onProgress}>

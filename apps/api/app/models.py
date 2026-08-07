@@ -105,6 +105,27 @@ class Observation(Base):
     items: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
+class ReadingAttempt(Base):
+    """Trener tempa czytania - świadomie OSOBNO od Attempt.
+
+    Czytanie na głos nie ma komponentu wydobywania z pamięci, więc jego metryki
+    nie mogą trafiać do statystyk mowy spontanicznej (z-score, adaptacja, mapa
+    struktur). Osobna tabela gwarantuje, że nigdy się nie zmieszają.
+    """
+
+    __tablename__ = "reading_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+    target_wpm: Mapped[int] = mapped_column(Integer, default=130)
+    reference_text: Mapped[str] = mapped_column(Text)
+    transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    words: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(Text, default="processing")
+
+
 class AppSetting(Base):
     """Ustawienia instancji zapisane przez użytkownika (klucz API, hasło).
 

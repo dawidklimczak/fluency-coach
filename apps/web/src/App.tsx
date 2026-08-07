@@ -15,6 +15,7 @@ import CalibrationScreen from "./screens/CalibrationScreen";
 import LoginScreen from "./screens/LoginScreen";
 import ObservationsScreen from "./screens/ObservationsScreen";
 import ProgressScreen from "./screens/ProgressScreen";
+import ReadingScreen from "./screens/ReadingScreen";
 import SessionHub from "./screens/SessionHub";
 import SessionSummaryScreen from "./screens/SessionSummaryScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -27,6 +28,7 @@ type View =
   | { name: "start" }
   | { name: "calibrate" }
   | { name: "settings" }
+  | { name: "reading" }
   | { name: "progress" }
   | { name: "structures" }
   | { name: "observations" }
@@ -210,6 +212,7 @@ export default function App() {
           onOpenSession={openLearningSession}
           onCalibrate={() => setView({ name: "calibrate" })}
           onSettings={() => setView({ name: "settings" })}
+          onReading={() => setView({ name: "reading" })}
           onProgress={() => setView({ name: "progress" })}
           onStructures={() => setView({ name: "structures" })}
           onObservations={() => setView({ name: "observations" })}
@@ -222,6 +225,8 @@ export default function App() {
           onLoggedOut={() => setView({ name: "login" })}
         />
       );
+    case "reading":
+      return <ReadingScreen onBack={() => refreshStart().catch(handleError)} />;
     case "progress":
       return <ProgressScreen onBack={() => refreshStart().catch(handleError)} />;
     case "structures":
