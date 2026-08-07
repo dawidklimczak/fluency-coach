@@ -1,0 +1,27 @@
+# Wdrożenie na Render (https://render.com) - kliknij "New Blueprint" i wskaż
+# to repozytorium. Render zapyta o hasło i klucz OpenAI PRZED uruchomieniem
+# usługi, więc instancja nigdy nie jest publicznie dostępna bez hasła.
+services:
+  - type: web
+    name: speaking-trainer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Plan poniżej 1 GB RAM nie wystarczy: spaCy z modelem językowym,
+    # onnxruntime i numpy zajmują w sumie około 500-700 MB.
+    plan: standard
+    healthCheckPath: /api/health
+    disk:
+      # baza, nagrania i klucz sesji; bez dysku dane znikają przy każdym deployu
+      name: trainer-data
+      mountPath: /data
+      sizeGB: 2
+    envVars:
+      # sync: false = Render poprosi o wartość w formularzu przy wdrożeniu
+      - key: APP_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_LLM_MODEL
+        value: gpt-4o-mini
+      - key: DATA_DIR
+        value: /data

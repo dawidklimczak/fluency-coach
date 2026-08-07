@@ -1,86 +1,131 @@
 # Speaking Automaticity Trainer
 
-Trenażer automatyzacji mowy angielskiej (spec: `SPEC.md`). Cel: skrócić czas od
-intencji do wypowiedzi i wydłużyć nieprzerwane odcinki mowy - nie poprawiać
-gramatykę. Feedback zawsze po fakcie, metryki czasowe z serwerowego VAD.
+A speaking trainer for people whose English comprehension runs far ahead of their
+production. It does not teach grammar or vocabulary. It measures how long it takes
+you to start speaking, how long you speak without stopping, and where your pauses
+fall — then trains those numbers down under time pressure.
 
-Zrealizowany zakres: **Faza 1 + Faza 2** (pipeline audio, kalibracja, VAD,
-Whisper z zachowaniem dysfluencji, silnik metryk, maszyna drilli, moduły
-Rapid Response / Describe Without the Word / Fluency Sprint, feedback,
-podsumowanie sesji, adaptacja trudności).
+**The core idea:** a grammar mistake made during fluent speech is a success. Hesitating
+while you assemble a perfect sentence is the failure. The app is built around that
+inversion, and it never corrects you mid-sentence.
 
-## Stack
+> **Nietechniczny użytkownik?** Zobacz [docs/URUCHOMIENIE.md](docs/URUCHOMIENIE.md) —
+> instrukcja krok po kroku po polsku, bez terminala.
 
-- `apps/web` - React + Vite + TypeScript + Tailwind, Silero VAD w przeglądarce
-  (onnxruntime-web) tylko do wskaźnika mowy i auto-stopu
-- `apps/api` - FastAPI (Python 3.11+), Silero VAD na CPU jako źródło prawdy,
-  Whisper API (`whisper-1`), SQLite w `data/app.db`
-- audio: WAV PCM 16-bit mono 16 kHz, nagrania w `data/audio/`
+## What it measures
 
-## Pierwsze uruchomienie
+Timing metrics come from server-side Silero VAD, never from the browser and never
+from transcript timestamps:
 
-```powershell
-# 1. Model VAD (ok. 1.8 MB, do backendu i frontendu)
-python scripts\download_models.py
+- **time to first word** — from stimulus to your first sound
+- **mean length of run** — words spoken between pauses ≥ 250 ms
+- **mid-clause pause ratio** — pauses inside a phrase signal retrieval trouble;
+  pauses at sentence boundaries are normal and are counted separately
+- **phonation time ratio**, articulation rate, long-pause count
 
-# 2. Backend
-cd apps\api
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
+Language metrics come from the transcript (Whisper, configured to *preserve*
+disfluencies rather than clean them up): filler rate, repairs, repetitions, MTLD,
+subordination index, and a frequency profile.
 
-# 3. Frontend
-cd ..\web
-npm install
+A grammatical-structure subsystem detects 21 target structures with spaCy and
+reports **avoidance** — whether you reached for the third conditional or quietly
+routed around it. Avoidance in implicit mode versus explicit mode is the main
+diagnostic output.
 
-# 4. Klucze API
-# skopiuj .env.example do .env w katalogu głównym i uzupełnij OPENAI_API_KEY
-# (klucz może też być w zmiennych środowiskowych systemu)
+## Modules
+
+Rapid Response · Unexpected Questions · Fluency Sprint · Describe Without the Word ·
+Paraphrase · Simplify · Idea Expansion · Story Loop
+
+All eight are one state machine with different JSON configuration in
+`apps/api/app/drills/`.
+
+## How a session works
+
+You open a **learning session**, run as many drills inside it as you like, then close
+it. Closing produces a summary plus constructive feedback — including recurring
+grammar patterns from that session, which is the only place grammar is ever mentioned.
+Those patterns feed **Observations**: a running diagnosis rebuilt after every session,
+showing what you get wrong most often and which patterns persist across weeks.
+
+## Running it
+
+You need an OpenAI API key. Transcription uses `whisper-1`; feedback and task
+generation use a chat model (default `gpt-4o-mini`). Timing metrics work without a
+key, but you get no transcript and no feedback. See
+[docs/URUCHOMIENIE.md](docs/URUCHOMIENIE.md) for cost estimates.
+
+### Docker (recommended)
+
+```bash
+cp .env.example .env      # set APP_PASSWORD, optionally OPENAI_API_KEY
+docker compose up -d
 ```
 
-## Start
+Open <http://127.0.0.1:8000>. Data lives in the `trainer-data` volume.
 
-Dwa terminale:
+A password is **required** in Docker: container traffic arrives via the Docker
+gateway, so the app cannot recognise it as local and refuses to serve without one.
 
-```powershell
-# backend (http://127.0.0.1:8000)
-cd apps\api
-.venv\Scripts\python -m uvicorn app.main:app --port 8000
+### From source
 
-# frontend (http://localhost:5173, proxy /api -> backend)
-cd apps\web
-npm run dev
+```bash
+python -m venv apps/api/.venv
+apps/api/.venv/bin/pip install -r apps/api/requirements.txt
+apps/api/.venv/bin/python -m spacy download en_core_web_sm
+apps/api/.venv/bin/python scripts/download_models.py
+cd apps/web && npm install && npm run build && cd ../..
+apps/api/.venv/bin/python -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
 ```
 
-Przy pierwszym wejściu aplikacja wymaga kalibracji: 10 s ciszy w Twoim
-pomieszczeniu (koryguje próg VAD pod szum tła).
+On Windows: run `setup.bat` once, then `start.bat`.
 
-## Testy krytyczne (SPEC sekcja 13)
+### Development
 
-```powershell
-cd apps\api
-.venv\Scripts\python -m pytest tests -v
+Backend and Vite dev server separately, with hot reload:
+
+```bash
+cd apps/api && .venv/bin/python -m uvicorn app.main:app --reload    # :8000
+cd apps/web && npm run dev                                          # :5173, proxies /api
 ```
 
-- `test_vad_timing.py` - dokładność ttfw (2.0 s ± 100 ms) i pauz o znanej długości
-- `test_calibration.py` - stabilność liczby pauz przy 3 poziomach szumu
-- `test_disfluency.py` - Whisper zachowuje >= 80% wypełniaczy i powtórzeń
-  (wywołuje prawdziwe API; pomijany bez `OPENAI_API_KEY`)
-- `test_metrics.py` - silnik metryk na danych syntetycznych
+Tests: `cd apps/api && .venv/bin/python -m pytest tests -q`. They run against a
+temporary data directory and never touch your real database. `tests/test_disfluency.py`
+calls the real Whisper API and needs a key.
 
-Fixtury audio generują się automatycznie przez Windows TTS (SAPI) przy pierwszym
-uruchomieniu testów.
+## Hosting
 
-## Czego celowo nie ma (non-goals ze spec)
+The app is **single-user by design** — there are no accounts, and all history belongs
+to one person. Host one instance per person, not one instance for many.
 
-Korekty gramatycznej w trakcie mówienia, transkrypcji na żywo, oceny poprawności
-jako wyniku, fiszek i nauki słownictwa. Podczas nagrywania na ekranie jest
-wyłącznie: bodziec, timer i pasek "mówisz / cisza".
+`render.yaml` and `fly.toml` are ready to use; both mount a persistent disk at `/data`
+and ask for `APP_PASSWORD` before the service goes live. Plan for **at least 1 GB RAM**
+— spaCy, onnxruntime and numpy need roughly 500–700 MB resident.
 
-## Jeszcze niezaimplementowane (Faza 3)
+## Security model
 
-Pełne metryki językowe (MTLD, subordination_index), wskaźnik
-`complexity_fluency_tradeoff`, ekran postępu i mapa cieplna struktur
-gramatycznych, detekcja struktur spaCy, generowanie zadań i ocena jakościowa
-przez LLM (Anthropic), pozostałe 7 modułów drilli, obserwacje tygodniowe,
-retencja audio 30 dni. Endpointy `stats/structures` i `tasks/generate` dojdą
-z tą fazą.
+- **Fail closed.** With no password set, the app serves only `localhost`. Reached from
+  anywhere else it returns 503 on every path rather than opening up.
+- The password is set via `APP_PASSWORD` before first start, and can be changed later
+  in Settings without a redeploy. Stored as an scrypt hash.
+- The OpenAI key is stored on your instance, never returned to the browser in full
+  (only a masked hint), and is sent only to OpenAI.
+- Access logging is disabled in the container image; no IP addresses are recorded.
+
+## Privacy
+
+Everything stays on the machine that runs the app: SQLite database, WAV recordings,
+transcripts and metrics. Audio is deleted after 30 days by default
+(`AUDIO_RETENTION_DAYS`); metrics are kept. Audio and transcripts go to OpenAI for
+transcription and feedback — that is the only outbound traffic.
+
+## Specification
+
+[SPEC.md](SPEC.md) is the original design document: the theoretical model, formal
+metric definitions, the drill contract, and the deliberate non-goals. Read section 2
+before changing behaviour — several apparent bugs are decisions.
+
+## License
+
+MIT. The Silero VAD model is downloaded at setup time from its own repository under
+its own license.

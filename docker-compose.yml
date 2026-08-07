@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: speaking-automaticity-trainer
+    # UWAGA: port jest celowo wystawiony tylko na localhost tego komputera.
+    # Zmiana na "8000:8000" udostępni aplikację w sieci lokalnej - rób to
+    # świadomie i tylko z ustawionym mocnym APP_PASSWORD.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # hasło do aplikacji - wymagane (patrz .env)
+      APP_PASSWORD: ${APP_PASSWORD:?Ustaw APP_PASSWORD w pliku .env}
+      # klucz OpenAI - opcjonalny tutaj, można go też wpisać w Ustawieniach
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_LLM_MODEL: ${OPENAI_LLM_MODEL:-gpt-4o-mini}
+    volumes:
+      # baza, nagrania i klucz sesji; bez tego dane znikną z kontenerem
+      - trainer-data:/data
+    restart: unless-stopped
+
+volumes:
+  trainer-data:

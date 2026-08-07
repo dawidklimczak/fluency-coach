@@ -1,0 +1,44 @@
+# Wdrożenie na Fly.io. Kolejność ma znaczenie - hasło ustawiamy PRZED
+# pierwszym uruchomieniem, żeby instancja nie stała chwili bez ochrony:
+#
+#   fly launch --no-deploy --copy-config
+#   fly volumes create trainer_data --size 2
+#   fly secrets set APP_PASSWORD='twoje-haslo' OPENAI_API_KEY='sk-...'
+#   fly deploy
+
+app = "speaking-trainer"
+primary_region = "waw"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATA_DIR = "/data"
+  OPENAI_LLM_MODEL = "gpt-4o-mini"
+
+[mounts]
+  # baza, nagrania i klucz sesji przeżywają redeploy
+  source = "trainer_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # bez tego mikrofon nie zadziała - przeglądarka wymaga bezpiecznego kontekstu
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  # poniżej 1 GB spaCy nie zmieści się w pamięci
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[checks.health]
+  type = "http"
+  port = 8000
+  path = "/api/health"
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "30s"
