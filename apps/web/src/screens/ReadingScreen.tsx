@@ -14,6 +14,8 @@ const TARGET_PRESETS = [
 ];
 
 const TARGET_KEY = "reading_target_wpm";
+const MINUTE_PRESETS = [1, 2, 3, 5];
+const MAX_STRUCTURES = 3;
 
 // Skala rozbieżna wobec celu: wolniej (chłodny) - na cel (neutralny) -
 // szybciej (ciepły). Kolor nigdy nie niesie znaczenia sam: każde słowo ma
@@ -42,6 +44,16 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
   const [metrics, setMetrics] = useState<ReadingMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // generowanie tekstu
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [structures, setStructures] = useState<{ id: string; label: string }[]>([]);
+  const [minutes, setMinutes] = useState(2);
+  const [topic, setTopic] = useState("");
+  const [chosenStructures, setChosenStructures] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [genNote, setGenNote] = useState<string | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
   const recorderRef = useRef<Recorder | null>(null);
   const vadRef = useRef<BrowserVad | null>(null);
   const t0Ref = useRef(0);
@@ -57,6 +69,48 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
       recorderRef.current?.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    if (showGenerator && structures.length === 0) {
+      api.readingStructures().then(setStructures).catch(() => {});
+    }
+  }, [showGenerator, structures.length]);
+
+  const toggleStructure = (id: string) => {
+    setChosenStructures((prev) =>
+      prev.includes(id)
+        ? prev.filter((s) => s !== id)
+        : prev.length >= MAX_STRUCTURES
+          ? prev
+          : [...prev, id]
+    );
+  };
+
+  const generate = async () => {
+    setGenerating(true);
+    setGenError(null);
+    setGenNote(null);
+    try {
+      const res = await api.generateReadingText({
+        minutes,
+        target_wpm: target,
+        topic,
+        structures: chosenStructures,
+      });
+      setText(res.text);
+      setGenNote(
+        `"${res.title}" · ${res.word_count} words · about ${res.estimated_seconds}s at ${target} wpm` +
+          (res.contains_digits
+            ? " · contains digits, which may lower the accuracy score"
+            : "")
+      );
+      setShowGenerator(false);
+    } catch (e) {
+      setGenError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const start = useCallback(async () => {
     setError(null);
@@ -345,9 +399,89 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
         </div>
 
         <p className="text-sm text-neutral-500">
-          Paste any English text, pick a target pace, then read it aloud. You get your
-          overall pace and a map of where you sped up or slowed down.
+          Paste any English text or have one written for you, pick a target pace, then
+          read it aloud. You get your overall pace and a map of where you sped up or
+          slowed down.
         </p>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-neutral-500">text to read</span>
+          <button
+            className="text-sm text-neutral-400 underline"
+            onClick={() => setShowGenerator(!showGenerator)}
+          >
+            {showGenerator ? "hide generator" : "generate a text"}
+          </button>
+        </div>
+
+        {showGenerator && (
+          <div className="flex flex-col gap-4 rounded border border-neutral-800 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-neutral-500">length</span>
+              {MINUTE_PRESETS.map((m) => (
+                <button
+                  key={m}
+                  className={`rounded border px-3 py-1 text-sm ${
+                    minutes === m
+                      ? "border-neutral-400 text-neutral-100"
+                      : "border-neutral-800 text-neutral-500 hover:border-neutral-600"
+                  }`}
+                  onClick={() => setMinutes(m)}
+                >
+                  {m} min
+                </button>
+              ))}
+              <span className="text-sm text-neutral-600">
+                ≈ {Math.round(minutes * target)} words at {target} wpm
+              </span>
+            </div>
+
+            <input
+              className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100"
+              placeholder="topic (optional) — e.g. why cities feel lonely"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+
+            <div>
+              <p className="mb-2 text-sm text-neutral-500">
+                grammar to emphasise (optional, up to {MAX_STRUCTURES})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {structures.map((s) => {
+                  const active = chosenStructures.includes(s.id);
+                  const disabled = !active && chosenStructures.length >= MAX_STRUCTURES;
+                  return (
+                    <button
+                      key={s.id}
+                      disabled={disabled}
+                      className={`rounded border px-2 py-1 text-xs ${
+                        active
+                          ? "border-sky-500 text-sky-300"
+                          : disabled
+                            ? "border-neutral-900 text-neutral-700"
+                            : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
+                      }`}
+                      onClick={() => toggleStructure(s.id)}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {genError && <p className="text-sm text-red-400">{genError}</p>}
+
+            <button className="btn self-start" onClick={generate} disabled={generating}>
+              {generating ? "writing..." : "Generate"}
+            </button>
+            <p className="text-xs text-neutral-600">
+              Numbers are written out as words, because digits get transcribed
+              unpredictably and would show up as reading mistakes.
+            </p>
+          </div>
+        )}
 
         <textarea
           className="h-56 w-full rounded border border-neutral-800 bg-neutral-950 p-4 text-neutral-100"
@@ -355,6 +489,8 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
+
+        {genNote && <p className="text-sm text-emerald-400">{genNote}</p>}
 
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-neutral-500">target pace</span>

@@ -102,6 +102,11 @@ class GeneratedTasks(BaseModel):
     tasks: list[GeneratedTask]
 
 
+class GeneratedReadingText(BaseModel):
+    title: str
+    text: str
+
+
 class ObservationItem(BaseModel):
     pattern: str
     example: str | None = None

@@ -151,6 +151,38 @@ def test_compute_flags_pauses():
     assert metrics["longest_pauses"][0]["before"] == "three"
 
 
+def test_structures_route_not_swallowed_by_id_route():
+    """/api/reading/structures musi trafiać do listy struktur, a nie być
+    czytane jako identyfikator próby."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app) as c:
+        res = c.get("/api/reading/structures")
+        assert res.status_code == 200
+        items = res.json()
+        assert len(items) == 21
+        assert {"id", "label"} <= set(items[0])
+
+
+def test_generate_validates_input():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app) as c:
+        # nieznana struktura
+        r = c.post(
+            "/api/reading/generate",
+            json={"minutes": 2, "structures": ["nie_ma_takiej"]},
+        )
+        assert r.status_code in (404, 503)
+        # czas poza zakresem
+        r2 = c.post("/api/reading/generate", json={"minutes": 99})
+        assert r2.status_code == 422
+
+
 def test_compute_without_transcript_does_not_crash():
     _, metrics = compute(
         reference_text="some text here",

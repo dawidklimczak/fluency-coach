@@ -318,6 +318,33 @@ export const api = {
   getReading: (readingId: number) =>
     fetch(`/api/reading/${readingId}`).then((r) => json<ReadingResult>(r)),
 
+  readingStructures: () =>
+    fetch("/api/reading/structures").then((r) =>
+      json<{ id: string; label: string }[]>(r)
+    ),
+
+  generateReadingText: async (body: {
+    minutes: number;
+    target_wpm: number;
+    topic: string;
+    structures: string[];
+  }) => {
+    const res = await fetch("/api/reading/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    return res.json() as Promise<{
+      title: string;
+      text: string;
+      word_count: number;
+      requested_words: number;
+      estimated_seconds: number;
+      contains_digits: boolean;
+    }>;
+  },
+
   readingHistory: () =>
     fetch("/api/reading").then((r) =>
       json<
