@@ -105,6 +105,20 @@ class Observation(Base):
     items: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
+class AppSetting(Base):
+    """Ustawienia instancji zapisane przez użytkownika (klucz API, hasło).
+
+    Wartości stąd mają pierwszeństwo przed zmiennymi środowiskowymi, dzięki
+    czemu zmiana w interfejsie nie wymaga restartu ani redeployu.
+    """
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
 class ModuleState(Base):
     """Bieżący poziom trudności per moduł (jeden użytkownik)."""
 

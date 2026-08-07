@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, LearningSessionState, ModuleInfo } from "../api/client";
-import { getTimeLimitOverrides, setTimeLimit } from "../settings";
+import { api, LearningSessionState } from "../api/client";
 
 interface Props {
   calibrated: boolean;
   openSession: LearningSessionState | null;
   onOpenSession: () => void;
   onCalibrate: () => void;
+  onSettings: () => void;
   onProgress: () => void;
   onStructures: () => void;
   onObservations: () => void;
@@ -17,19 +17,20 @@ export default function StartScreen({
   openSession,
   onOpenSession,
   onCalibrate,
+  onSettings,
   onProgress,
   onStructures,
   onObservations,
 }: Props) {
-  const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
-  const [overrides, setOverrides] = useState<Record<string, number>>(
-    getTimeLimitOverrides()
-  );
-  const [error, setError] = useState<string | null>(null);
+  const [keyMissing, setKeyMissing] = useState(false);
 
   useEffect(() => {
-    api.modules().then(setModules).catch((e) => setError(String(e)));
+    // brak klucza kończyłby się nagraniem bez transkrypcji i bez feedbacku,
+    // więc mówimy o tym wprost zanim użytkownik zacznie
+    api
+      .settings()
+      .then((s) => setKeyMissing(!s.openai_key_set))
+      .catch(() => {});
   }, []);
 
   return (
@@ -38,7 +39,18 @@ export default function StartScreen({
         Speaking Automaticity Trainer
       </h1>
 
-      {error && <p className="text-red-400">{error}</p>}
+      {keyMissing && (
+        <div className="max-w-md rounded border border-amber-900 p-4 text-center">
+          <p className="text-amber-400">No OpenAI API key set.</p>
+          <p className="mt-1 text-sm text-neutral-400">
+            Timing metrics work without it, but there will be no transcript and no
+            feedback.
+          </p>
+          <button className="mt-3 text-sm text-neutral-300 underline" onClick={onSettings}>
+            add the key
+          </button>
+        </div>
+      )}
 
       {!calibrated ? (
         <div className="flex flex-col items-center gap-4">
@@ -56,9 +68,7 @@ export default function StartScreen({
             className="w-full rounded border border-neutral-600 px-8 py-5 text-xl text-neutral-100 hover:border-neutral-300"
             onClick={onOpenSession}
           >
-            {openSession
-              ? `Resume session #${openSession.number}`
-              : "Start session"}
+            {openSession ? `Resume session #${openSession.number}` : "Start session"}
           </button>
           {openSession && (
             <p className="text-sm text-neutral-500">
@@ -67,44 +77,7 @@ export default function StartScreen({
             </p>
           )}
 
-          {showSettings && (
-            <div className="w-full rounded border border-neutral-800 p-4">
-              <p className="mb-3 text-sm uppercase tracking-wide text-neutral-500">
-                speaking time limit (seconds, empty = default)
-              </p>
-              <div className="flex flex-col gap-2">
-                {modules.map((m) => (
-                  <label
-                    key={m.id}
-                    className="flex items-center justify-between text-sm text-neutral-400"
-                  >
-                    <span>{m.name}</span>
-                    <input
-                      type="number"
-                      min={5}
-                      max={300}
-                      className="w-24 rounded border border-neutral-800 bg-neutral-950 px-2 py-1 text-right font-mono text-neutral-200"
-                      placeholder={String(m.max_speak_s)}
-                      value={overrides[m.id] ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        setTimeLimit(m.id, v);
-                        setOverrides(getTimeLimitOverrides());
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-neutral-600">
-                Story Loop rounds scale proportionally (90/60/45 at the default 90s).
-              </p>
-            </div>
-          )}
-
-          <div className="flex justify-center gap-6 text-sm text-neutral-600">
-            <button className="underline" onClick={() => setShowSettings(!showSettings)}>
-              time limits
-            </button>
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-neutral-600">
             <button className="underline" onClick={onProgress}>
               progress
             </button>
@@ -113,6 +86,9 @@ export default function StartScreen({
             </button>
             <button className="underline" onClick={onObservations}>
               observations
+            </button>
+            <button className="underline" onClick={onSettings}>
+              settings
             </button>
             <button className="underline" onClick={onCalibrate}>
               recalibrate

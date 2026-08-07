@@ -5,23 +5,28 @@ import {
   LearningSessionState,
   LearningSessionSummary,
   TaskDto,
+  UnauthorizedError,
 } from "./api/client";
 import { Recorder } from "./audio/recorder";
 import { BrowserVad } from "./audio/vad";
 import DrillScreen from "./drills/DrillScreen";
 import { getTimeLimit } from "./settings";
 import CalibrationScreen from "./screens/CalibrationScreen";
+import LoginScreen from "./screens/LoginScreen";
 import ObservationsScreen from "./screens/ObservationsScreen";
 import ProgressScreen from "./screens/ProgressScreen";
 import SessionHub from "./screens/SessionHub";
 import SessionSummaryScreen from "./screens/SessionSummaryScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 import StartScreen from "./screens/StartScreen";
 import StructuresScreen from "./screens/StructuresScreen";
 
 type View =
+  | { name: "loading" }
+  | { name: "login" }
   | { name: "start" }
   | { name: "calibrate" }
-  | { name: "loading" }
+  | { name: "settings" }
   | { name: "progress" }
   | { name: "structures" }
   | { name: "observations" }
@@ -45,6 +50,13 @@ export default function App() {
   const [fatal, setFatal] = useState<string | null>(null);
   const recorderRef = useRef<Recorder | null>(null);
 
+  // wygaśnięcie sesji w dowolnym miejscu odsyła na ekran logowania,
+  // zamiast pokazywać surowy błąd
+  const handleError = useCallback((e: unknown) => {
+    if (e instanceof UnauthorizedError) setView({ name: "login" });
+    else setFatal(String(e));
+  }, []);
+
   const refreshStart = useCallback(async () => {
     const [status, current] = await Promise.all([
       api.calibrationStatus(),
@@ -55,9 +67,24 @@ export default function App() {
     setView({ name: "start" });
   }, []);
 
-  useEffect(() => {
-    refreshStart().catch((e) => setFatal(`Backend unavailable: ${e}`));
+  const boot = useCallback(async () => {
+    setView({ name: "loading" });
+    try {
+      const auth = await api.authState();
+      if (!auth.authenticated) {
+        setView({ name: "login" });
+        return;
+      }
+      await refreshStart();
+    } catch (e) {
+      if (e instanceof UnauthorizedError) setView({ name: "login" });
+      else setFatal(`Backend unavailable: ${e}`);
+    }
   }, [refreshStart]);
+
+  useEffect(() => {
+    boot();
+  }, [boot]);
 
   const openLearningSession = useCallback(async () => {
     setView({ name: "loading" });
@@ -65,9 +92,9 @@ export default function App() {
       const session = await api.learningSessionStart();
       setView({ name: "hub", session });
     } catch (e) {
-      setFatal(String(e));
+      handleError(e);
     }
-  }, []);
+  }, [handleError]);
 
   const backToHub = useCallback(async () => {
     setView({ name: "loading" });
@@ -79,9 +106,9 @@ export default function App() {
         await refreshStart();
       }
     } catch (e) {
-      setFatal(String(e));
+      handleError(e);
     }
-  }, [refreshStart]);
+  }, [refreshStart, handleError]);
 
   const startDrill = useCallback(
     async (
@@ -98,7 +125,7 @@ export default function App() {
           Recorder.create(),
         ]);
         recorderRef.current = recorder;
-        // lokalne nadpisanie limitu czasu mówienia (ustawienia na ekranie startu)
+        // lokalne nadpisanie limitu czasu mówienia (ekran ustawień)
         const override = getTimeLimit(module);
         const config = override
           ? {
@@ -118,10 +145,10 @@ export default function App() {
           vadThreshold: status.vad_threshold,
         });
       } catch (e) {
-        setFatal(String(e));
+        handleError(e);
       }
     },
-    []
+    [handleError]
   );
 
   // koniec przebiegu drilla -> powrót do huba sesji (podsumowanie dopiero
@@ -135,22 +162,25 @@ export default function App() {
         api.endSession(sessionId).catch(() => {});
         await backToHub();
       } catch (e) {
-        setFatal(String(e));
+        handleError(e);
       }
     },
-    [backToHub]
+    [backToHub, handleError]
   );
 
-  const endLearningSession = useCallback(async (session: LearningSessionState) => {
-    setView({ name: "loading" });
-    try {
-      const { summary } = await api.learningSessionEnd(session.id);
-      setOpenSession(null);
-      setView({ name: "sessionSummary", summary });
-    } catch (e) {
-      setFatal(String(e));
-    }
-  }, []);
+  const endLearningSession = useCallback(
+    async (session: LearningSessionState) => {
+      setView({ name: "loading" });
+      try {
+        const { summary } = await api.learningSessionEnd(session.id);
+        setOpenSession(null);
+        setView({ name: "sessionSummary", summary });
+      } catch (e) {
+        handleError(e);
+      }
+    },
+    [handleError]
+  );
 
   if (fatal) {
     return (
@@ -170,6 +200,8 @@ export default function App() {
           Loading...
         </div>
       );
+    case "login":
+      return <LoginScreen onSuccess={boot} />;
     case "start":
       return (
         <StartScreen
@@ -177,23 +209,31 @@ export default function App() {
           openSession={openSession}
           onOpenSession={openLearningSession}
           onCalibrate={() => setView({ name: "calibrate" })}
+          onSettings={() => setView({ name: "settings" })}
           onProgress={() => setView({ name: "progress" })}
           onStructures={() => setView({ name: "structures" })}
           onObservations={() => setView({ name: "observations" })}
         />
       );
+    case "settings":
+      return (
+        <SettingsScreen
+          onBack={() => refreshStart().catch(handleError)}
+          onLoggedOut={() => setView({ name: "login" })}
+        />
+      );
     case "progress":
-      return <ProgressScreen onBack={() => refreshStart()} />;
+      return <ProgressScreen onBack={() => refreshStart().catch(handleError)} />;
     case "structures":
-      return <StructuresScreen onBack={() => refreshStart()} />;
+      return <StructuresScreen onBack={() => refreshStart().catch(handleError)} />;
     case "observations":
-      return <ObservationsScreen onBack={() => refreshStart()} />;
+      return <ObservationsScreen onBack={() => refreshStart().catch(handleError)} />;
     case "calibrate":
       return (
         <CalibrationScreen
           onDone={() => {
             setCalibrated(true);
-            refreshStart();
+            refreshStart().catch(handleError);
           }}
         />
       );
@@ -203,7 +243,7 @@ export default function App() {
           session={view.session}
           onStartDrill={(module, filter) => startDrill(view.session, module, filter)}
           onEndSession={() => endLearningSession(view.session)}
-          onLeave={() => refreshStart()}
+          onLeave={() => refreshStart().catch(handleError)}
         />
       );
     case "drill":
@@ -220,7 +260,10 @@ export default function App() {
       );
     case "sessionSummary":
       return (
-        <SessionSummaryScreen summary={view.summary} onBack={() => refreshStart()} />
+        <SessionSummaryScreen
+          summary={view.summary}
+          onBack={() => refreshStart().catch(handleError)}
+        />
       );
   }
 }

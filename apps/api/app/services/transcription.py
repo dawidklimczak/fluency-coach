@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 
 from ..config import get_settings
+from .app_settings import openai_api_key
 from .seed import seed_config
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,7 @@ WHISPER_MODEL = "whisper-1"
 
 
 def transcription_enabled() -> bool:
-    s = get_settings()
-    return bool(s.openai_api_key) and not s.mock_transcription
+    return bool(openai_api_key()) and not get_settings().mock_transcription
 
 
 def transcribe(audio_path: Path) -> dict | None:
@@ -31,7 +31,7 @@ def transcribe(audio_path: Path) -> dict | None:
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=get_settings().openai_api_key)
+        client = OpenAI(api_key=openai_api_key())
         disfluency_prompt = seed_config().get("whisper_disfluency_prompt", "")
         with open(audio_path, "rb") as f:
             result = client.audio.transcriptions.create(

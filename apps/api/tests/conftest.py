@@ -1,5 +1,8 @@
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import wave
 from pathlib import Path
 
@@ -10,6 +13,16 @@ TESTS_DIR = Path(__file__).resolve().parent
 FIXTURES = TESTS_DIR / "fixtures"
 
 sys.path.insert(0, str(TESTS_DIR.parent))
+
+# Izolacja: testy nie mogą dotykać bazy i nagrań użytkownika. DATA_DIR musi
+# być ustawione ZANIM cokolwiek zaimportuje app.db (silnik powstaje przy imporcie).
+_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="sat-tests-"))
+shutil.copy(
+    TESTS_DIR.parents[2] / "data" / "seed_tasks.json",
+    _TEST_DATA_DIR / "seed_tasks.json",
+)
+os.environ["DATA_DIR"] = str(_TEST_DATA_DIR)
+os.environ.pop("APP_PASSWORD", None)
 
 SAMPLE_RATE = 16000
 

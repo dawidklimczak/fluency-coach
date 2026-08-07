@@ -98,7 +98,29 @@ export interface LearningSessionSummary {
   feedback: SessionFeedback | null;
 }
 
+export interface AuthState {
+  password_required: boolean;
+  authenticated: boolean;
+  local: boolean;
+}
+
+export interface InstanceSettings {
+  openai_key_set: boolean;
+  openai_key_hint: string | null;
+  openai_key_from_env: boolean;
+  password_set: boolean;
+  llm_model: string;
+}
+
+/** Rzucane przy 401 - App pokazuje wtedy ekran logowania zamiast błędu. */
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("Wymagane zalogowanie");
+  }
+}
+
 async function json<T>(res: Response): Promise<T> {
+  if (res.status === 401) throw new UnauthorizedError();
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
@@ -106,8 +128,58 @@ async function json<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+/** Wyciąga komunikat z `detail` FastAPI, żeby użytkownik widział powód. */
+async function errorMessage(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    return typeof body.detail === "string" ? body.detail : JSON.stringify(body);
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
 export const api = {
   health: () => fetch("/api/health").then((r) => json<{ ok: boolean; vad_model: boolean; transcription: boolean }>(r)),
+
+  authState: () => fetch("/api/auth/state").then((r) => json<AuthState>(r)),
+
+  login: async (password: string) => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (res.status === 401) return { ok: false as const, error: "Nieprawidłowe hasło" };
+    if (!res.ok) return { ok: false as const, error: await errorMessage(res) };
+    return { ok: true as const };
+  },
+
+  logout: () => fetch("/api/auth/logout", { method: "POST" }).then((r) => json<{ ok: boolean }>(r)),
+
+  settings: () => fetch("/api/settings").then((r) => json<InstanceSettings>(r)),
+
+  setOpenAiKey: async (apiKey: string) => {
+    const res = await fetch("/api/settings/openai-key", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    return res.json();
+  },
+
+  setPassword: async (newPassword: string, currentPassword: string | null) => {
+    const res = await fetch("/api/settings/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        new_password: newPassword,
+        current_password: currentPassword,
+      }),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    return res.json();
+  },
 
   modules: () => fetch("/api/sessions/modules").then((r) => json<ModuleInfo[]>(r)),
 

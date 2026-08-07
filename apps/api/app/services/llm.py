@@ -16,6 +16,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from ..config import get_settings
+from .app_settings import openai_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def llm_enabled() -> bool:
-    return bool(get_settings().openai_api_key)
+    return bool(openai_api_key())
 
 
 def load_prompt(name: str, variables: dict[str, str]) -> str:
@@ -43,7 +44,7 @@ def complete_json(prompt_name: str, variables: dict[str, str], schema: type[T]) 
         from openai import OpenAI
 
         settings = get_settings()
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(api_key=openai_api_key())
         prompt = load_prompt(prompt_name, variables)
 
         for attempt in range(2):  # jeden retry (spec sekcja 8)
