@@ -16,6 +16,8 @@ dist/
 # Data
 data/app.db
 data/audio/
+# klucz podpisujący ciasteczka sesji - generowany lokalnie, nigdy w repo
+data/instance_key
 
 # Models (downloaded at setup)
 apps/api/app/assets/silero_vad.onnx
