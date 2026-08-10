@@ -44,9 +44,11 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
   const [metrics, setMetrics] = useState<ReadingMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // generowanie tekstu
-  const [showGenerator, setShowGenerator] = useState(false);
+  // generowanie tekstu; panel otwarty domyślnie, dopóki nie ma tekstu -
+  // inaczej wybór struktur był schowany dwa kliknięcia głęboko
+  const [showGenerator, setShowGenerator] = useState(true);
   const [structures, setStructures] = useState<{ id: string; label: string }[]>([]);
+  const [structuresError, setStructuresError] = useState(false);
   const [minutes, setMinutes] = useState(2);
   const [topic, setTopic] = useState("");
   const [chosenStructures, setChosenStructures] = useState<string[]>([]);
@@ -72,7 +74,14 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     if (showGenerator && structures.length === 0) {
-      api.readingStructures().then(setStructures).catch(() => {});
+      api
+        .readingStructures()
+        .then((s) => {
+          setStructures(s);
+          setStructuresError(false);
+        })
+        // bez tego pusta lista wyglądała jak brak funkcji, a nie jak błąd
+        .catch(() => setStructuresError(true));
     }
   }, [showGenerator, structures.length]);
 
@@ -404,13 +413,19 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
           slowed down.
         </p>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-neutral-500">text to read</span>
+        <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+          <span className="text-sm uppercase tracking-wide text-neutral-500">
+            text to read
+          </span>
           <button
-            className="text-sm text-neutral-400 underline"
+            className={`rounded border px-3 py-1 text-sm ${
+              showGenerator
+                ? "border-neutral-700 text-neutral-400"
+                : "border-neutral-600 text-neutral-200 hover:border-neutral-400"
+            }`}
             onClick={() => setShowGenerator(!showGenerator)}
           >
-            {showGenerator ? "hide generator" : "generate a text"}
+            {showGenerator ? "hide generator" : "write one for me"}
           </button>
         </div>
 
@@ -446,7 +461,21 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
             <div>
               <p className="mb-2 text-sm text-neutral-500">
                 grammar to emphasise (optional, up to {MAX_STRUCTURES})
+                {chosenStructures.length > 0 && (
+                  <span className="ml-2 text-sky-400">
+                    {chosenStructures.length} selected
+                  </span>
+                )}
               </p>
+              {structuresError && (
+                <p className="text-sm text-red-400">
+                  Could not load the structure list — check that the app is running
+                  and reload the page.
+                </p>
+              )}
+              {!structuresError && structures.length === 0 && (
+                <p className="text-sm text-neutral-600">loading...</p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {structures.map((s) => {
                   const active = chosenStructures.includes(s.id);

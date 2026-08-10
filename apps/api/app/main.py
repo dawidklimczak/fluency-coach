@@ -130,7 +130,12 @@ def _mount_frontend() -> None:
         candidate = dist / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(dist / "index.html")
+        # index.html nigdy z cache: pliki w assets/ mają hash w nazwie, ale
+        # zapamiętany index wskazywałby na poprzedni build po aktualizacji
+        return FileResponse(
+            dist / "index.html",
+            headers={"Cache-Control": "no-store, must-revalidate"},
+        )
 
 
 _mount_frontend()
