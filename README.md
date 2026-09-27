@@ -1,5 +1,7 @@
 # Speaking Automaticity Trainer
 
+> **Work in progress.** This is a personal side project, not a finished or maintained product — expect rough edges and missing pieces.
+
 A speaking trainer for people whose English comprehension runs far ahead of their
 production. It does not teach grammar or vocabulary. It measures how long it takes
 you to start speaking, how long you speak without stopping, and where your pauses
