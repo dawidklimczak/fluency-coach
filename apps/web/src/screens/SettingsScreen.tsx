@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, InstanceSettings, ModuleInfo } from "../api/client";
-import { getTimeLimitOverrides, setTimeLimit } from "../settings";
+import { api, InstanceSettings } from "../api/client";
 
 interface Props {
   onBack: () => void;
@@ -9,10 +8,6 @@ interface Props {
 
 export default function SettingsScreen({ onBack, onLoggedOut }: Props) {
   const [settings, setSettings] = useState<InstanceSettings | null>(null);
-  const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const [overrides, setOverrides] = useState<Record<string, number>>(
-    getTimeLimitOverrides()
-  );
 
   const [apiKey, setApiKey] = useState("");
   const [keyMsg, setKeyMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -26,7 +21,6 @@ export default function SettingsScreen({ onBack, onLoggedOut }: Props) {
 
   useEffect(() => {
     load();
-    api.modules().then(setModules).catch(() => {});
   }, []);
 
   const saveKey = async () => {
@@ -141,39 +135,6 @@ export default function SettingsScreen({ onBack, onLoggedOut }: Props) {
           >
             Save password
           </button>
-        </section>
-
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm uppercase tracking-wide text-neutral-500">
-            Speaking time limits
-          </h2>
-          <p className="text-xs text-neutral-600">
-            Seconds per attempt; empty means the module default. Story Loop rounds
-            scale proportionally.
-          </p>
-          <div className="flex flex-col gap-2">
-            {modules.map((m) => (
-              <label
-                key={m.id}
-                className="flex items-center justify-between text-sm text-neutral-400"
-              >
-                <span>{m.name}</span>
-                <input
-                  type="number"
-                  min={5}
-                  max={300}
-                  className="w-24 rounded border border-neutral-800 bg-neutral-950 px-2 py-1 text-right font-mono text-neutral-200"
-                  placeholder={String(m.max_speak_s)}
-                  value={overrides[m.id] ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value === "" ? null : Number(e.target.value);
-                    setTimeLimit(m.id, v);
-                    setOverrides(getTimeLimitOverrides());
-                  }}
-                />
-              </label>
-            ))}
-          </div>
         </section>
 
         {settings?.password_set && (

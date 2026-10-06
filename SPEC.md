@@ -24,6 +24,11 @@ To nie jest problem wiedzy. To problem dostępu do wiedzy pod ograniczeniem czas
 - Nie ma oceny "poprawności" jako głównego wyniku.
 - Nie ma nauki słownictwa, fiszek, list, gramatyki.
 - Aplikacja nie jest chatbotem. LLM jest komponentem, nie interfejsem.
+  - Jedyny wyjątek: moduł „Rozmowa" (GPT-Live) - głosowa rozmowa jako warunek
+    pomiarowy (swobodne tury, nieprzewidywalne pytania). Obowiązują te same
+    reguły: bez transkryptu na żywo, bez korekt w trakcie, metryki liczone
+    z własnego nagrania (whisper-1), wyniki dopiero po rozmowie, osobno od
+    statystyk sond transferowych.
 
 ---
 

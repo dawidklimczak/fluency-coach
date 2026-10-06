@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..config import get_settings
 from .app_settings import openai_api_key
-from .seed import seed_config
+from .seed import language_config
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def transcribe(audio_path: Path, prompt: str | None = None) -> dict | None:
 
         client = OpenAI(api_key=openai_api_key())
         disfluency_prompt = (
-            seed_config().get("whisper_disfluency_prompt", "")
+            language_config().get("whisper_disfluency_prompt", "")
             if prompt is None
             else prompt
         )

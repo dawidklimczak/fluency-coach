@@ -1,11 +1,8 @@
-"""LLM przez OpenAI (spec sekcja 8; decyzja: jeden klucz OpenAI zamiast Anthropic).
-
-LLM robi trzy rzeczy i nic więcej: generuje zadania offline, ocenia jakościowo
-wybrane moduły po próbie i buduje obserwacje tygodniowe. Nigdy nie ocenia
-płynności - płynność jest mierzona, nie oceniana.
+"""LLM przez OpenAI (decyzja: jeden klucz OpenAI zamiast Anthropic).
 
 Każdy prompt zwraca wyłącznie JSON walidowany Pydantic. Jeden retry przy
-błędzie parsowania, potem None - brak oceny nigdy nie blokuje metryk.
+błędzie parsowania, potem None - brak wyniku LLM nigdy nie blokuje metryk.
+Nigdy nie ocenia płynności - płynność jest mierzona, nie oceniana.
 """
 
 import json
@@ -70,103 +67,73 @@ def complete_json(prompt_name: str, variables: dict[str, str], schema: type[T]) 
 # --- schematy odpowiedzi ----------------------------------------------------
 
 
-class ParaphraseEval(BaseModel):
-    meaning_preserved: bool
-    comment: str = ""
-
-
-class SimplifyEval(BaseModel):
-    meaning_preserved: bool
-    simpler: bool
-    comment: str = ""
-
-
-class DescribeEval(BaseModel):
-    guess: str
-    guessable: bool
-
-
-class IdeaExpansionEval(BaseModel):
-    coherent: bool
-    comment: str = ""
-
-
-class GeneratedTask(BaseModel):
-    prompt_text: str
-    target_structure: str | None = None
-    payload: dict | None = None
-    tags: list[str] = []
-
-
-class GeneratedTasks(BaseModel):
-    tasks: list[GeneratedTask]
-
-
 class GeneratedReadingText(BaseModel):
     title: str
     text: str
 
 
-class ObservationItem(BaseModel):
-    pattern: str
-    example: str | None = None
-    note: str | None = None
+class TransferProbeOutcome(BaseModel):
+    """Klasyfikacja post-hoc sondy transferowej (spec dodatek v2B).
+
+    answered i redirected są równoważne - obie liczą się jako sukces w
+    baseline'ie i regułach wsparcia. Tylko stalled jest sygnałem negatywnym.
+    """
+
+    outcome: str  # 'answered' | 'redirected' | 'stalled'
 
 
-class ObservationsResult(BaseModel):
-    items: list[ObservationItem]
+class GeneratedChunk(BaseModel):
+    text: str
+    # opis sytuacji po polsku do Trybu A chunk drillu (dodatek v2)
+    prompt_pl: str
 
 
-class GrammarNote(BaseModel):
-    pattern: str
-    example: str | None = None
-    note: str | None = None
+class GeneratedSourcePack(BaseModel):
+    """Wyjście generatora SourcePack (spec §7)."""
+
+    seed_text: str
+    guiding_questions: list[str]
+    keywords: list[str]
+    chunks: list[GeneratedChunk]
+    transfer_prompt: str
+    task_type: str  # 'narrative' | 'description' | 'argumentative'
+    # self-ocena LLM - czy transfer_prompt wymaga przypomnienia sobie
+    # konkretnego faktu z życia użytkownika spoza tego, co dostał w packu
+    requires_personal_recall: bool
 
 
-class SessionFeedback(BaseModel):
-    comment: str
-    went_well: list[str] = []
-    to_improve: list[str] = []
-    grammar: list[GrammarNote] = []
+class GeneratedFunctionChunk(BaseModel):
+    text: str
+    prompt_pl: str
+    category: str
 
 
-# --- ocena jakościowa po próbie (spec 8 pkt 2) ------------------------------
+class GeneratedFunctionChunks(BaseModel):
+    chunks: list[GeneratedFunctionChunk]
 
 
-def evaluate_attempt(module: str, task_prompt: str, payload: dict | None, transcript: str) -> dict | None:
-    """Ocena jakościowa dla modułów z llm_eval=true. Zwraca dict do attempt.llm_eval."""
-    payload = payload or {}
-    if module == "paraphrase":
-        result = complete_json(
-            "eval_paraphrase",
-            {"source": str(payload.get("source", task_prompt)), "transcript": transcript},
-            ParaphraseEval,
-        )
-    elif module == "simplify":
-        result = complete_json(
-            "eval_simplify",
-            {"source": str(payload.get("source", task_prompt)), "transcript": transcript},
-            SimplifyEval,
-        )
-    elif module == "describe_without_word":
-        target = str((payload.get("forbidden_words") or [""])[0])
-        result = complete_json(
-            "eval_describe",
-            {"target": target, "transcript": transcript},
-            DescribeEval,
-        )
-        if result is not None:
-            out = result.model_dump()
-            out["matches_target"] = (
-                result.guess.strip().lower() == target.strip().lower()
-            )
-            return out
-    elif module == "idea_expansion":
-        result = complete_json(
-            "eval_idea_expansion",
-            {"seed": str(payload.get("seed", task_prompt)), "transcript": transcript},
-            IdeaExpansionEval,
-        )
-    else:
-        return None
-    return result.model_dump() if result is not None else None
+class GeneratedFarTransferPrompt(BaseModel):
+    """Sonda 'far' (spec zmian §6.2, §10.4): świadomie NIE zależy od aktywnej
+    Domain - mierzy generalizację automatyzmu poza wytrenowanym tematem."""
+
+    prompt: str
+
+
+class GeneratedDiagnosticPromptSet(BaseModel):
+    """Bottleneck Diagnostic (spec zmian §2.2, §10.1) - matched prompt set:
+    ten sam poziom trudności/abstrakcji, różne konkretne pytania dla A/B/C,
+    plus analogiczne pytanie po polsku dla opcjonalnej kontroli."""
+
+    cold: str
+    supplied_ideas_prompt: str
+    supplied_ideas: list[str]  # dokładnie 3 krótkie kierunki (bez gotowych zdań)
+    self_plan: str
+    native_control: str
+
+
+class GeneratedFollowUp(BaseModel):
+    """Recovery Drill (spec zmian §8.1, §10.6): dokładnie jedno pytanie
+    dopytujące, świadomie bez pola na feedback - schemat fizycznie
+    uniemożliwia zwrócenie czegokolwiek poza pytaniem."""
+
+    question: str

@@ -1,0 +1,445 @@
+{
+  "version": 1,
+  "language": "en",
+  "config": {
+    "fillers": [
+      "um",
+      "uh",
+      "erm",
+      "er",
+      "hmm",
+      "ah",
+      "like",
+      "you know",
+      "i mean",
+      "kind of",
+      "sort of",
+      "well",
+      "actually",
+      "basically",
+      "literally",
+      "so yeah",
+      "right"
+    ],
+    "repair_markers": [
+      "i mean",
+      "sorry",
+      "no wait",
+      "or rather",
+      "actually no",
+      "let me rephrase",
+      "what i wanted to say",
+      "scratch that",
+      "how do you say"
+    ],
+    "pause_thresholds_ms": {
+      "silent_pause": 250,
+      "long_pause": 1000
+    },
+    "whisper_disfluency_prompt": "Um, so I was, uh, I was thinking that maybe we could, you know, we could try... I mean, it's, it's not really, hmm, how do you say it, it's not really that simple, right? Like, uh, the thing is, the thing is that I, I don't, I don't know."
+  },
+  "structures": [
+    {
+      "id": "future_will",
+      "label": "Future: will",
+      "hint": "will + bare infinitive",
+      "example": "I think it will take about three months.",
+      "detect": "AUX 'will' + VB",
+      "cheatsheet": {
+        "form": "will + verb",
+        "use": [
+          "decisions made right now, on the spot",
+          "predictions and promises without a plan behind them",
+          "offers: I'll take care of it"
+        ],
+        "examples": [
+          "I'll call you back in five minutes.",
+          "This won't work, trust me."
+        ],
+        "mistake": "Don't use it for things already arranged - that's 'going to' or present continuous."
+      }
+    },
+    {
+      "id": "future_going_to",
+      "label": "Future: going to",
+      "hint": "be going to + infinitive",
+      "example": "We are going to move in September.",
+      "detect": "be + going + to + VB",
+      "cheatsheet": {
+        "form": "am/is/are going to + verb",
+        "use": [
+          "plans and intentions decided before speaking",
+          "predictions based on what you can see now"
+        ],
+        "examples": [
+          "We're going to rewrite this module.",
+          "Look at those clouds - it's going to rain."
+        ],
+        "mistake": "Don't say 'will' for a plan you already have - 'I will move next month' sounds like you just decided."
+      }
+    },
+    {
+      "id": "future_continuous",
+      "label": "Future continuous",
+      "hint": "will be + -ing",
+      "example": "This time next week I will be sitting on a train.",
+      "detect": "will + be + VBG",
+      "cheatsheet": {
+        "form": "will be + verb-ing",
+        "use": [
+          "an action in progress at a specific future moment",
+          "polite questions about someone's plans: will you be using this?"
+        ],
+        "examples": [
+          "At nine I'll be driving, so text me instead.",
+          "Will you be joining the call?"
+        ],
+        "mistake": "Not for completed future results - 'by Friday I will be finishing' should be 'I will have finished'."
+      }
+    },
+    {
+      "id": "future_perfect",
+      "label": "Future perfect",
+      "hint": "will have + past participle",
+      "example": "By June I will have finished the migration.",
+      "detect": "will + have + VBN",
+      "cheatsheet": {
+        "form": "will have + past participle",
+        "use": [
+          "something completed BEFORE a future deadline",
+          "usually with 'by': by Monday, by the end of the year"
+        ],
+        "examples": [
+          "By June we'll have migrated everything.",
+          "She'll have left before you arrive."
+        ],
+        "mistake": "If there is no deadline in the sentence, you probably want plain 'will'."
+      }
+    },
+    {
+      "id": "past_simple",
+      "label": "Past simple",
+      "hint": "regular and irregular past forms",
+      "example": "I left at seven and got there late.",
+      "detect": "VBD without perfect/continuous auxiliary",
+      "cheatsheet": {
+        "form": "verb-ed / irregular form",
+        "use": [
+          "finished actions at a known time: yesterday, in 2020, last week",
+          "sequences of events in a story - one thing after another"
+        ],
+        "examples": [
+          "I pushed the fix and went home.",
+          "The meeting ended at noon."
+        ],
+        "mistake": "Don't use present perfect with a finished time: 'I have seen him yesterday' is wrong."
+      }
+    },
+    {
+      "id": "past_continuous",
+      "label": "Past continuous",
+      "hint": "was/were + -ing",
+      "example": "I was reviewing the code when the call came.",
+      "detect": "was|were + VBG",
+      "cheatsheet": {
+        "form": "was/were + verb-ing",
+        "use": [
+          "background action interrupted by a shorter event",
+          "what was in progress at a specific past moment"
+        ],
+        "examples": [
+          "I was reviewing the code when the server died.",
+          "At 8 pm we were still debugging."
+        ],
+        "mistake": "Don't narrate whole stories in it - the events that move the story forward take past simple."
+      }
+    },
+    {
+      "id": "past_perfect",
+      "label": "Past perfect",
+      "hint": "had + past participle",
+      "example": "The deadline had already passed when I noticed.",
+      "detect": "had + VBN",
+      "cheatsheet": {
+        "form": "had + past participle",
+        "use": [
+          "the earlier of two past events - the 'past of the past'",
+          "often with: by the time, already, before, when I realized"
+        ],
+        "examples": [
+          "By the time I checked, the deadline had passed.",
+          "I realized I had sent the wrong file."
+        ],
+        "mistake": "Unnecessary when the order is already clear from 'before/after' - past simple is enough."
+      }
+    },
+    {
+      "id": "used_to",
+      "label": "used to",
+      "hint": "used to + infinitive, for discontinued states and habits",
+      "example": "I used to commute two hours a day.",
+      "detect": "used + to + VB",
+      "cheatsheet": {
+        "form": "used to + verb",
+        "use": [
+          "past habits and states that are no longer true",
+          "contrasting then vs now"
+        ],
+        "examples": [
+          "I used to commute two hours a day.",
+          "There used to be a shop here."
+        ],
+        "mistake": "'I am used to getting up early' is a different structure (be used to + -ing) - it means accustomed, not a past habit."
+      }
+    },
+    {
+      "id": "would_habitual",
+      "label": "would (habitual past)",
+      "hint": "would + infinitive for repeated past actions",
+      "example": "Every summer we would drive to the coast.",
+      "detect": "would + VB in past narrative context",
+      "cheatsheet": {
+        "form": "would + verb (past habits)",
+        "use": [
+          "repeated past actions in storytelling, usually after the scene is set",
+          "pairs well with: every summer, as a child, back then"
+        ],
+        "examples": [
+          "Every Friday we would order pizza and ship a release.",
+          "My dad would read to me every night."
+        ],
+        "mistake": "Only actions, never states - 'I would live in Berlin' is wrong, use 'used to live'."
+      }
+    },
+    {
+      "id": "conditional_0",
+      "label": "Zero conditional",
+      "hint": "if + present, present",
+      "example": "If a meeting has no agenda, it runs long.",
+      "detect": "if + VBZ|VBP, VBZ|VBP",
+      "cheatsheet": {
+        "form": "if + present, present",
+        "use": [
+          "things that are always true - rules, habits, cause and effect",
+          "'if' means 'whenever' here"
+        ],
+        "examples": [
+          "If a meeting has no agenda, it runs long.",
+          "If I skip lunch, I get grumpy."
+        ],
+        "mistake": "No 'will' anywhere - that would turn it into a prediction about one specific case."
+      }
+    },
+    {
+      "id": "conditional_1",
+      "label": "First conditional",
+      "hint": "if + present, will + infinitive",
+      "example": "If the build fails, I will roll it back.",
+      "detect": "if + VBZ|VBP, will + VB",
+      "cheatsheet": {
+        "form": "if + present, will + verb",
+        "use": [
+          "real, likely future situations and their results",
+          "warnings, plans, negotiations"
+        ],
+        "examples": [
+          "If the build fails, I'll roll it back.",
+          "If you finish early, we'll grab lunch."
+        ],
+        "mistake": "Present tense after 'if' - never 'if it will rain'."
+      }
+    },
+    {
+      "id": "conditional_2",
+      "label": "Second conditional",
+      "hint": "if + past, would + infinitive",
+      "example": "If I had more time, I would rewrite it.",
+      "detect": "if + VBD, would|could|might + VB",
+      "cheatsheet": {
+        "form": "if + past, would + verb",
+        "use": [
+          "unreal or unlikely present/future - imagining things",
+          "polite suggestions and hypotheticals: what would you do?"
+        ],
+        "examples": [
+          "If I had more time, I'd rewrite it.",
+          "If she lived closer, she'd visit more."
+        ],
+        "mistake": "Never 'would' in the if-clause: 'if I would have time' is the classic error."
+      }
+    },
+    {
+      "id": "conditional_3",
+      "label": "Third conditional",
+      "hint": "if + had + past participle, would have + past participle",
+      "example": "If I had asked earlier, I would have saved a week.",
+      "detect": "if + had + VBN, would|could|might + have + VBN",
+      "cheatsheet": {
+        "form": "if + had + p.p., would have + p.p.",
+        "use": [
+          "past that did NOT happen and its imagined past result",
+          "regrets, post-mortems, lessons learned"
+        ],
+        "examples": [
+          "If I had asked earlier, I would have saved a week.",
+          "If we'd tested it, the bug would have been caught."
+        ],
+        "mistake": "'If I would have known' - wrong; the if-clause takes 'had known', never 'would'."
+      }
+    },
+    {
+      "id": "conditional_mixed",
+      "label": "Mixed conditional",
+      "hint": "past condition, present result",
+      "example": "If I had studied law, I would be in a different city now.",
+      "detect": "if + had + VBN, would + VB (present reference)",
+      "cheatsheet": {
+        "form": "if + had + p.p., would + verb (or reversed)",
+        "use": [
+          "past cause with a PRESENT result: a decision then, a situation now",
+          "present cause with a past result: if I knew him, I would have called him"
+        ],
+        "examples": [
+          "If I had studied law, I'd be in a different city now.",
+          "If he had saved money, he wouldn't be broke today."
+        ],
+        "mistake": "Watch which half is past and which is present - 'now/today' signals the present half."
+      }
+    },
+    {
+      "id": "modal_speculation_present",
+      "label": "Speculation: present",
+      "hint": "must / might / could / can't + be",
+      "example": "She must be stuck in traffic.",
+      "detect": "must|might|could|can't + be|VB",
+      "cheatsheet": {
+        "form": "must / might / may / could / can't + be",
+        "use": [
+          "guessing about now: must = almost sure, might/may/could = possible, can't = impossible"
+        ],
+        "examples": [
+          "She must be stuck in traffic.",
+          "That can't be the right address."
+        ],
+        "mistake": "The opposite of 'must be' is 'can't be', not 'mustn't be'."
+      }
+    },
+    {
+      "id": "modal_speculation_past",
+      "label": "Speculation: past",
+      "hint": "must / might / could have + past participle",
+      "example": "He might have forgotten the meeting.",
+      "detect": "must|might|could|can't + have + VBN",
+      "cheatsheet": {
+        "form": "must / might / could / can't + have + p.p.",
+        "use": [
+          "guessing about the past: what probably happened",
+          "post-mortems and detective work: the cache must have expired"
+        ],
+        "examples": [
+          "He might have forgotten the meeting.",
+          "She must have taken the earlier train."
+        ],
+        "mistake": "Don't drop 'have': 'he must forgot' is wrong."
+      }
+    },
+    {
+      "id": "passive_voice",
+      "label": "Passive voice",
+      "hint": "be + past participle, agent optional",
+      "example": "The parts are assembled in three factories.",
+      "detect": "nsubjpass + auxpass",
+      "cheatsheet": {
+        "form": "be + past participle",
+        "use": [
+          "when the doer is unknown, obvious, or unimportant",
+          "processes and systems: the parts are assembled in three factories",
+          "keeping the topic in the subject position"
+        ],
+        "examples": [
+          "The decision was made without me.",
+          "The invoice will be sent tomorrow."
+        ],
+        "mistake": "Don't force it when the doer matters - 'the bug was introduced by me' is weaker than 'I introduced the bug'."
+      }
+    },
+    {
+      "id": "reported_speech",
+      "label": "Reported speech",
+      "hint": "backshift, no direct quotation",
+      "example": "He said he had already sent it.",
+      "detect": "say|tell|ask + ccomp with backshifted tense",
+      "cheatsheet": {
+        "form": "said/told (that) + backshifted clause",
+        "use": [
+          "relaying what someone said - tense usually steps one back: is->was, will->would, did->had done",
+          "'tell' needs a person, 'say' does not"
+        ],
+        "examples": [
+          "She said she was leaving the company.",
+          "He told me the project had been canceled."
+        ],
+        "mistake": "'He said me' - wrong; either 'he told me' or 'he said to me'."
+      }
+    },
+    {
+      "id": "relative_clauses",
+      "label": "Relative clauses",
+      "hint": "who / which / whose / that, defining and non-defining",
+      "example": "The colleague whose desk faces the window never uses it.",
+      "detect": "relcl dependency",
+      "cheatsheet": {
+        "form": "who / which / that / whose + clause",
+        "use": [
+          "packing two sentences into one: identifying people and things",
+          "who = people, which = things, that = both (informal), whose = possession"
+        ],
+        "examples": [
+          "The engineer who wrote this left last year.",
+          "I met a woman whose brother runs the bakery."
+        ],
+        "mistake": "No double subject: 'the tool which we use it daily' - drop the 'it'."
+      }
+    },
+    {
+      "id": "gerund_vs_infinitive",
+      "label": "Gerund vs infinitive",
+      "hint": "verb patterns: avoid doing, plan to do, keep doing, refuse to do",
+      "example": "I keep postponing it because I refuse to admit it is stuck.",
+      "detect": "xcomp with VBG or TO+VB",
+      "cheatsheet": {
+        "form": "verb + -ing OR verb + to + verb",
+        "use": [
+          "-ing after: enjoy, avoid, keep, finish, suggest, mind",
+          "to + verb after: decide, agree, plan, refuse, manage, want",
+          "remember/stop/try change meaning depending on which one follows"
+        ],
+        "examples": [
+          "I enjoy reading before bed.",
+          "He decided to sell the car."
+        ],
+        "mistake": "'I enjoy to read' - wrong; when unsure, learn the verb together with its pattern."
+      }
+    },
+    {
+      "id": "wish_if_only",
+      "label": "wish / if only",
+      "hint": "wish + past for present regret, wish + past perfect for past regret",
+      "example": "I wish I had said no at the start.",
+      "detect": "wish|if only + VBD|had+VBN",
+      "cheatsheet": {
+        "form": "wish + past / wish + had + p.p.",
+        "use": [
+          "present regrets: wish + past simple (I wish I had more time)",
+          "past regrets: wish + past perfect (I wish I had taken the job)",
+          "'if only' = the same, but stronger"
+        ],
+        "examples": [
+          "I wish it were summer already.",
+          "If only we had started earlier."
+        ],
+        "mistake": "Not 'I wish I have' - wish always pushes the tense one step back."
+      }
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 import pytest
 
 from app.services.lang_metrics import (
+    clause_boundaries,
     compute_language_metrics,
     lexical_distance,
     mtld,
@@ -93,3 +94,34 @@ def test_lexical_distance_paraphrase():
 
 def test_empty_transcript():
     assert compute_language_metrics("", None) == {}
+
+
+def test_clause_boundaries_at_sentence_starts():
+    transcript = "This is a plan. We will start tomorrow."
+    words = [w(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate(transcript.split())]
+    idx, confidence = clause_boundaries(transcript, words)
+    assert confidence == 1.0
+    assert 0 in idx  # "This"
+    assert 4 in idx  # "We"
+
+
+def test_clause_boundaries_at_subordinate_clause():
+    transcript = "I stayed home because it was raining"
+    words = [w(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate(transcript.split())]
+    idx, confidence = clause_boundaries(transcript, words)
+    assert confidence == 1.0
+    assert 3 in idx  # "because"
+
+
+def test_clause_boundaries_at_coordinated_clause():
+    transcript = "I like coffee but she likes tea"
+    words = [w(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate(transcript.split())]
+    idx, confidence = clause_boundaries(transcript, words)
+    assert confidence == 1.0
+    assert 3 in idx  # "but"
+
+
+def test_clause_boundaries_empty_without_words():
+    idx, confidence = clause_boundaries("I stayed home", None)
+    assert idx == set()
+    assert confidence == 0.0

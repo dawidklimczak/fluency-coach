@@ -38,16 +38,17 @@ class Settings(BaseSettings):
         return self.data_dir / "audio"
 
     @property
-    def seed_tasks_path(self) -> Path:
-        return self.data_dir / "seed_tasks.json"
+    def language_config_path(self) -> Path:
+        return self.data_dir / "language_config.json"
+
+    @property
+    def known_vocabulary_import_path(self) -> Path:
+        """Opcjonalny import własnego słownictwa (spec §6 KnownVocabulary)."""
+        return self.data_dir / "known_vocabulary_import.json"
 
     @property
     def vad_model_path(self) -> Path:
         return Path(__file__).resolve().parent / "assets" / "silero_vad.onnx"
-
-    @property
-    def drills_dir(self) -> Path:
-        return Path(__file__).resolve().parent / "drills"
 
     @property
     def instance_key_path(self) -> Path:

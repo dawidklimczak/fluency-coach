@@ -1,103 +1,3 @@
-export interface StructureHint {
-  label: string;
-  hint: string | null;
-  example: string | null;
-}
-
-export interface StructureCheatsheet {
-  form: string;
-  use: string[];
-  examples: string[];
-  mistake: string | null;
-}
-
-export interface StructureOption {
-  id: string;
-  label: string;
-  cheatsheet: StructureCheatsheet | null;
-}
-
-export interface TaskDto {
-  id: string;
-  module: string;
-  difficulty: number;
-  target_structure: string | null;
-  prompt_text: string;
-  payload: Record<string, unknown> | null;
-  structure_mode: "explicit" | "implicit" | null;
-  structure_hint: StructureHint | null;
-}
-
-export interface DrillConfig {
-  id: string;
-  name: string;
-  stimulus: string;
-  prep_time_s: number;
-  min_speak_s: number;
-  max_speak_s: number;
-  auto_stop_silence_s: number;
-  rounds: number;
-  round_speak_s?: number[];
-  attempts_per_session: number;
-  primary_metrics: string[];
-  show_timer: boolean;
-}
-
-export interface ModuleInfo {
-  id: string;
-  name: string;
-  attempts_per_session: number;
-  max_speak_s: number;
-  difficulty: number;
-}
-
-export interface AttemptResult {
-  attempt_id: number;
-  status: "processing" | "done" | "error";
-  metrics: Record<string, any> | null;
-  transcript: string | null;
-}
-
-export interface LearningSessionState {
-  id: number;
-  number: number;
-  started_at: string;
-  attempts: number;
-  modules_done: string[];
-  fatigue_detected: boolean;
-}
-
-export interface GrammarNote {
-  pattern: string;
-  example: string | null;
-  note: string | null;
-}
-
-export interface SessionFeedback {
-  comment: string;
-  went_well: string[];
-  to_improve: string[];
-  grammar: GrammarNote[];
-}
-
-export interface LearningSessionSummary {
-  number: number;
-  started_at: string;
-  ended_at: string;
-  attempts: number;
-  modules: {
-    module: string;
-    attempts: number;
-    median_ttfw: number | null;
-    median_mean_length_of_run: number | null;
-    long_pause_total: number;
-  }[];
-  median_ttfw: number | null;
-  fatigue_detected: boolean;
-  fatigue_curve: { index: number; ttfw: number | null; filler_rate: number | null }[];
-  feedback: SessionFeedback | null;
-}
-
 export interface ReadingToken {
   text: string;
   newline_before: boolean;
@@ -154,6 +54,121 @@ export interface InstanceSettings {
   llm_model: string;
 }
 
+export interface Domain {
+  id: number;
+  name: string;
+  status: "active" | "done";
+  session_count: number;
+  target_sessions: number;
+  started_at: string;
+}
+
+export interface RoundPlan {
+  number: number;
+  support_level: number;
+  prep_s: number;
+  speak_limit_s: number;
+}
+
+export interface ChunkDto {
+  id: number;
+  bank: "domain" | "function";
+  text: string;
+  prompt_pl: string;
+  category: string | null;
+}
+
+export type TransferProbeType = "near" | "far";
+
+export interface SessionPack {
+  session_id: number;
+  domain: string;
+  support_ceiling: number;
+  writing_phase_active: boolean;
+  embed_mode_unlocked: boolean;
+  seed_text: string;
+  guiding_questions: string[];
+  keywords: string[];
+  transfer_prompt: string;
+  keyword_planning_seconds: number;
+  near_transfer_prompt: string;
+  far_transfer_prompt: string | null;
+  transfer_order: TransferProbeType[];
+  rounds: RoundPlan[];
+  bank_a_chunks: ChunkDto[];
+  bank_b_chunks: ChunkDto[];
+  interrupted_reason: string | null;
+}
+
+export interface AttemptStatus {
+  attempt_id: number;
+  status: "processing" | "done" | "error";
+  transcript: string | null;
+  metrics: Record<string, number | string | null> | null;
+}
+
+export interface MetricDelta {
+  value: number | null;
+  baseline: number | null;
+}
+
+export interface ProbeSummary {
+  outcome_note: string | null;
+  deltas: Record<string, MetricDelta>;
+}
+
+export interface SessionSummary {
+  session_id: number;
+  ended_reason: string;
+  support_ceiling: number;
+  support_changed: "up" | "down" | null;
+  near: ProbeSummary;
+  far: ProbeSummary;
+}
+
+// --- Bottleneck Diagnostic (spec zmian §2) ---------------------------------
+
+export type DiagnosticCondition = "cold" | "supplied_ideas" | "self_plan" | "repetition" | "native_control";
+
+export interface DiagnosticTrial {
+  id: number;
+  condition: DiagnosticCondition;
+  prompt: string;
+  support_json: { ideas?: string[]; items?: string[] } | null;
+  planning_seconds: number;
+  speaking_limit_seconds: number;
+  source_trial_id: number | null;
+  order_in_session: number;
+}
+
+export interface DiagnosticSessionDto {
+  session_id: number;
+  status: "in_progress" | "completed";
+  language_control_enabled: boolean;
+  trials: DiagnosticTrial[];
+  note: string[] | null;
+}
+
+export interface BottleneckProfile {
+  content_generation_sensitivity: string;
+  planning_benefit: string;
+  repetition_benefit: string;
+  l2_specific_cost: string;
+  sustained_speech_cost: string;
+  disclaimer: string;
+}
+
+// --- Recovery Drill (spec zmian §8) ----------------------------------------
+
+export type RecoveryKind = "lost_thread" | "reformulation";
+
+export interface RecoveryStaticTrial {
+  kind: RecoveryKind;
+  prompt: string;
+  suggested_chunk: string | null;
+  speaking_limit_seconds: number;
+}
+
 /** Rzucane przy 401 - App pokazuje wtedy ekran logowania zamiast błędu. */
 export class UnauthorizedError extends Error {
   constructor() {
@@ -170,7 +185,6 @@ async function json<T>(res: Response): Promise<T> {
   return res.json();
 }
 
-/** Wyciąga komunikat z `detail` FastAPI, żeby użytkownik widział powód. */
 async function errorMessage(res: Response): Promise<string> {
   try {
     const body = await res.json();
@@ -180,8 +194,28 @@ async function errorMessage(res: Response): Promise<string> {
   }
 }
 
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok && res.status !== 401) throw new Error(await errorMessage(res));
+  return json<T>(res);
+}
+
+function uploadAttempt<T>(url: string, wav: Blob, meta: Record<string, unknown>): Promise<T> {
+  const fd = new FormData();
+  fd.append("audio", wav, "attempt.wav");
+  fd.append("payload", JSON.stringify(meta));
+  return fetch(url, { method: "POST", body: fd }).then((r) => json<T>(r));
+}
+
 export const api = {
-  health: () => fetch("/api/health").then((r) => json<{ ok: boolean; vad_model: boolean; transcription: boolean }>(r)),
+  health: () =>
+    fetch("/api/health").then((r) =>
+      json<{ ok: boolean; vad_model: boolean; transcription: boolean }>(r)
+    ),
 
   authState: () => fetch("/api/auth/state").then((r) => json<AuthState>(r)),
 
@@ -223,8 +257,6 @@ export const api = {
     return res.json();
   },
 
-  modules: () => fetch("/api/sessions/modules").then((r) => json<ModuleInfo[]>(r)),
-
   calibrationStatus: () =>
     fetch("/api/calibrate/status").then((r) =>
       json<{ calibrated: boolean; noise_floor_db: number | null; vad_threshold: number }>(r)
@@ -238,75 +270,103 @@ export const api = {
     );
   },
 
-  structures: () =>
-    fetch("/api/sessions/structures").then((r) => json<StructureOption[]>(r)),
+  // --- profil: kontekst osobisty i domeny --------------------------------
 
-  learningSessionStart: () =>
-    fetch("/api/learning-sessions", { method: "POST" }).then((r) =>
-      json<LearningSessionState & { resumed: boolean }>(r)
+  getPersonalContext: () =>
+    fetch("/api/profile/personal-context").then((r) => json<{ content: string; version: number }>(r)),
+
+  setPersonalContext: (content: string) =>
+    postJson<{ content: string; version: number }>("/api/profile/personal-context", { content }),
+
+  listDomains: () => fetch("/api/profile/domains").then((r) => json<Domain[]>(r)),
+
+  suggestDomains: () => fetch("/api/profile/domains/suggestions").then((r) => json<string[]>(r)),
+
+  createDomain: (name: string, targetSessions = 5) =>
+    postJson<{ id: number; name: string }>("/api/profile/domains", {
+      name,
+      target_sessions: targetSessions,
+    }),
+
+  finishDomain: (id: number) => postJson<{ ok: boolean }>(`/api/profile/domains/${id}/finish`, {}),
+
+  reactivateDomain: (id: number) =>
+    postJson<{ ok: boolean }>(`/api/profile/domains/${id}/reactivate`, {}),
+
+  // --- sesja mówienia ------------------------------------------------------
+
+  startSession: () => postJson<SessionPack>("/api/speaking-sessions/start", {}),
+
+  getSession: (id: number) => fetch(`/api/speaking-sessions/${id}`).then((r) => json<SessionPack>(r)),
+
+  sessionStatus: (id: number) =>
+    fetch(`/api/speaking-sessions/${id}/status`).then((r) =>
+      json<{ interrupted: boolean; interrupted_reason: string | null }>(r)
     ),
 
-  learningSessionCurrent: () =>
-    fetch("/api/learning-sessions/current").then((r) =>
-      json<{ open: boolean } & Partial<LearningSessionState>>(r)
+  submitWritingRehearsal: (sessionId: number, text: string, durationS: number) =>
+    postJson<{ ok: boolean; word_count: number }>(
+      `/api/speaking-sessions/${sessionId}/writing-rehearsal`,
+      { text, duration_s: durationS }
     ),
 
-  learningSessionEnd: (id: number) =>
-    fetch(`/api/learning-sessions/${id}/end`, { method: "POST" }).then((r) =>
-      json<{ summary: LearningSessionSummary }>(r)
+  submitKeywordPlan: (sessionId: number, items: string[]) =>
+    postJson<{ ok: boolean; items: string[] }>(
+      `/api/speaking-sessions/${sessionId}/keyword-plan`,
+      { items }
     ),
 
-  createSession: (
-    module: string,
-    structureFilter?: string | null,
-    learningSessionId?: number | null
+  submitRoundAttempt: (sessionId: number, roundNumber: number, wav: Blob, t0OffsetSamples: number) =>
+    uploadAttempt<{ attempt_id: number }>(
+      `/api/speaking-sessions/${sessionId}/rounds/${roundNumber}/attempts`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
+    ),
+
+  submitTransferProbe: (
+    sessionId: number,
+    probeType: TransferProbeType,
+    wav: Blob,
+    t0OffsetSamples: number
   ) =>
-    fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        module,
-        structure_filter: structureFilter ?? null,
-        learning_session_id: learningSessionId ?? null,
-      }),
-    }).then((r) =>
-      json<{
-        session_id: number;
-        module: string;
-        difficulty: number;
-        first_task: TaskDto;
-        drill_config: DrillConfig;
-      }>(r)
+    uploadAttempt<{ attempt_id: number; probe_id: number }>(
+      `/api/speaking-sessions/${sessionId}/transfer-probe/${probeType}`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
     ),
 
-  nextTask: (sessionId: number) =>
-    fetch(`/api/sessions/${sessionId}/next-task`).then((r) =>
-      json<{ task: TaskDto; drill_config: DrillConfig; difficulty: number }>(r)
+  getAttempt: (attemptId: number) =>
+    fetch(`/api/speaking-sessions/attempts/${attemptId}`).then((r) => json<AttemptStatus>(r)),
+
+  chunkAccessExposure: (sessionId: number, chunkId: number, rtMs: number) =>
+    postJson<{ ok: boolean }>(`/api/speaking-sessions/${sessionId}/chunks/${chunkId}/access`, {
+      rt_ms: rtMs,
+    }),
+
+  chunkEmbedExposure: (sessionId: number, chunkId: number, wav: Blob, t0OffsetSamples: number) =>
+    uploadAttempt<{ attempt_id: number }>(
+      `/api/speaking-sessions/${sessionId}/chunks/${chunkId}/embed`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
     ),
 
-  submitAttempt: (
-    wav: Blob,
-    meta: {
-      session_id: number;
-      task_id: string;
-      t0_offset_samples: number;
-      attempt_index: number;
-      round_index: number;
-      structure_mode?: "explicit" | "implicit" | null;
-    }
-  ) => {
-    const fd = new FormData();
-    fd.append("audio", wav, "attempt.wav");
-    fd.append("payload", JSON.stringify(meta));
-    return fetch("/api/attempts", { method: "POST", body: fd }).then((r) =>
-      json<{ attempt_id: number }>(r)
-    );
-  },
+  endSession: (sessionId: number) =>
+    postJson<SessionSummary>(`/api/speaking-sessions/${sessionId}/end`, {}),
 
-  submitReading: (
-    wav: Blob,
-    meta: { reference_text: string; target_wpm: number }
-  ) => {
+  selfTranscriptionAvailable: (sessionId: number) =>
+    fetch(`/api/speaking-sessions/${sessionId}/self-transcription/available`).then((r) =>
+      json<{ available: boolean }>(r)
+    ),
+
+  submitSelfTranscription: (sessionId: number, userText: string) =>
+    postJson<{ user_text: string; whisper_text: string }>(
+      `/api/speaking-sessions/${sessionId}/self-transcription`,
+      { user_text: userText }
+    ),
+
+  // --- czytanie (faza 0 - rozgrzewka, trener tempa) -----------------------
+
+  submitReading: (wav: Blob, meta: { reference_text: string; target_wpm: number }) => {
     const fd = new FormData();
     fd.append("audio", wav, "reading.wav");
     fd.append("payload", JSON.stringify(meta));
@@ -319,9 +379,7 @@ export const api = {
     fetch(`/api/reading/${readingId}`).then((r) => json<ReadingResult>(r)),
 
   readingStructures: () =>
-    fetch("/api/reading/structures").then((r) =>
-      json<{ id: string; label: string }[]>(r)
-    ),
+    fetch("/api/reading/structures").then((r) => json<{ id: string; label: string }[]>(r)),
 
   generateReadingText: async (body: {
     minutes: number;
@@ -359,46 +417,117 @@ export const api = {
       >(r)
     ),
 
-  getAttempt: (attemptId: number) =>
-    fetch(`/api/attempts/${attemptId}`).then((r) => json<AttemptResult>(r)),
+  // --- postęp ---------------------------------------------------------------
 
-  progress: (module: string, days = 30) =>
-    fetch(`/api/stats/progress?module=${encodeURIComponent(module)}&days=${days}`).then(
-      (r) =>
-        json<{
-          module: string;
-          days: number;
-          series: Record<string, number | string | null>[];
-        }>(r)
-    ),
-
-  structuresHeatmap: () =>
-    fetch("/api/stats/structures").then((r) =>
+  progress: (days = 90, probeType: TransferProbeType | "legacy" = "far") =>
+    fetch(`/api/stats/progress?days=${days}&probe_type=${probeType}`).then((r) =>
       json<{
-        baseline_ttfw: number | null;
-        structures: {
-          structure: string;
-          attempts: number;
-          avoidance: number | null;
-          avoidance_explicit: number | null;
-          avoidance_implicit: number | null;
-          ttfw_structured: number | null;
-          pre_structure_pause: number | null;
-        }[];
+        days: number;
+        probe_type: string;
+        series: Record<string, number | string | null>[];
       }>(r)
     ),
 
-  observations: () =>
-    fetch("/api/stats/observations").then((r) =>
-      json<{
-        generated_at: string | null;
-        stale: boolean;
-        items: { pattern: string; example: string | null; note: string | null }[];
-      }>(r)
+  // --- Bottleneck Diagnostic --------------------------------------------
+
+  startDiagnostic: (languageControlEnabled: boolean) =>
+    postJson<DiagnosticSessionDto>("/api/diagnostics/start", {
+      language_control_enabled: languageControlEnabled,
+    }),
+
+  getDiagnostic: (sessionId: number) =>
+    fetch(`/api/diagnostics/${sessionId}`).then((r) => json<DiagnosticSessionDto>(r)),
+
+  submitDiagnosticPlan: (sessionId: number, trialId: number, items: string[]) =>
+    postJson<{ ok: boolean; items: string[] }>(`/api/diagnostics/${sessionId}/plan`, {
+      trial_id: trialId,
+      items,
+    }),
+
+  submitDiagnosticAttempt: (sessionId: number, condition: DiagnosticCondition, wav: Blob, t0OffsetSamples: number) =>
+    uploadAttempt<{ attempt_id: number }>(
+      `/api/diagnostics/${sessionId}/trials/${condition}/attempts`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
     ),
 
-  endSession: (sessionId: number) =>
-    fetch(`/api/sessions/${sessionId}/end`, { method: "POST" }).then((r) =>
-      json<{ summary: unknown; fatigue_detected: boolean }>(r)
+  getDiagnosticAttempt: (attemptId: number) =>
+    fetch(`/api/diagnostics/attempts/${attemptId}`).then((r) =>
+      json<{ attempt_id: number; status: "processing" | "done" | "error"; transcript: string | null }>(r)
     ),
+
+  endDiagnostic: (sessionId: number) =>
+    postJson<DiagnosticSessionDto>(`/api/diagnostics/${sessionId}/end`, {}),
+
+  getBottleneckProfile: () =>
+    fetch("/api/diagnostics/profile").then((r) => json<{ profile: BottleneckProfile | null }>(r)),
+
+  // --- Recovery Drill ------------------------------------------------------
+
+  getRecoveryStaticTrial: (kind: RecoveryKind) =>
+    fetch(`/api/recovery/trials/${kind}`).then((r) => json<RecoveryStaticTrial>(r)),
+
+  submitRecoveryAttempt: (kind: RecoveryKind, wav: Blob, t0OffsetSamples: number) =>
+    uploadAttempt<{ attempt_id: number; recovery_attempt_id: number }>(
+      `/api/recovery/trials/${kind}/attempts`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
+    ),
+
+  getRecoveryFollowUp: (lostThreadAttemptId: number) =>
+    postJson<{ recovery_attempt_id: number; question: string }>("/api/recovery/follow-up", {
+      lost_thread_attempt_id: lostThreadAttemptId,
+    }),
+
+  submitRecoveryFollowUpAttempt: (recoveryAttemptId: number, wav: Blob, t0OffsetSamples: number) =>
+    uploadAttempt<{ attempt_id: number }>(
+      `/api/recovery/follow-up/${recoveryAttemptId}/attempts`,
+      wav,
+      { t0_offset_samples: t0OffsetSamples }
+    ),
+
+  getRecoveryAttempt: (attemptId: number) =>
+    fetch(`/api/recovery/attempts/${attemptId}`).then((r) =>
+      json<{ attempt_id: number; status: "processing" | "done" | "error"; transcript: string | null }>(r)
+    ),
+
+  // --- Rozmowa (GPT-Live) ---------------------------------------------------
+
+  conversationPersonas: () =>
+    fetch("/api/conversation/personas").then((r) => json<{ personas: string[] }>(r)),
+
+  startConversation: (sdpOffer: string, persona: string, maxMinutes: number) =>
+    postJson<{ session_id: number; sdp_answer: string; max_minutes: number }>(
+      "/api/conversation/start",
+      { sdp_offer: sdpOffer, persona, max_minutes: maxMinutes }
+    ),
+
+  endConversation: (id: number, wav: Blob, turns: ConversationWindow[], billedSeconds: number | null) =>
+    uploadAttempt<{ session_id: number }>(`/api/conversation/${id}/end`, wav, {
+      turns,
+      billed_seconds: billedSeconds,
+    }),
+
+  getConversation: (id: number) =>
+    fetch(`/api/conversation/${id}`).then((r) => json<ConversationResult>(r)),
 };
+
+export interface ConversationWindow {
+  start_s: number;
+  end_s: number;
+}
+
+export interface ConversationTurnResult {
+  number: number;
+  start_s: number;
+  end_s: number;
+  metrics: Record<string, number | null>;
+}
+
+export interface ConversationResult {
+  session_id: number;
+  status: "active" | "processing" | "done" | "error";
+  persona: string;
+  billed_seconds: number | null;
+  turns: ConversationTurnResult[];
+}

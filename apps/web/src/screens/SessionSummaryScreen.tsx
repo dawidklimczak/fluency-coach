@@ -1,133 +1,93 @@
-import { LearningSessionSummary } from "../api/client";
+import { useEffect, useState } from "react";
+import { api, ProbeSummary, SessionSummary } from "../api/client";
 
 interface Props {
-  summary: LearningSessionSummary;
+  summary: SessionSummary;
   onBack: () => void;
+  onSelfTranscription: () => void;
 }
 
-// podsumowanie zamkniętej sesji nauki: metryki + konstruktywny feedback
-// (w tym gramatyczny - zawsze po sesji, nigdy w trakcie)
-export default function SessionSummaryScreen({ summary, onBack }: Props) {
-  const fb = summary.feedback;
+const METRIC_LABELS: Record<string, { label: string; unit: string }> = {
+  mean_length_of_run: { label: "mean length of run", unit: " words" },
+  phonation_time_ratio: { label: "phonation time ratio", unit: "" },
+  mid_clause_pause_duration: { label: "mid-clause pause duration", unit: "s" },
+};
+
+// spec §5: wyłącznie delta vs baseline, bez z-score'ów, bez ocen, bez kolorów
+function deltaLine(key: string, value: number | null, baseline: number | null): string | null {
+  const meta = METRIC_LABELS[key];
+  if (!meta || value == null) return null;
+  if (baseline == null) return `${meta.label}: ${value}${meta.unit} (still building your baseline)`;
+  const diff = value - baseline;
+  const abs = Math.abs(diff).toFixed(diff < 1 ? 2 : 1);
+  if (Math.abs(diff) < 0.01) return `${meta.label}: about the same as your median`;
+  const direction = diff > 0 ? "higher" : "lower";
+  return `${meta.label}: ${abs}${meta.unit} ${direction} than your median`;
+}
+
+const ENDED_REASON_TEXT: Record<string, string> = {
+  completed: "Session completed.",
+  low_phonation_r3: "The session ended a bit early - that's a normal call, not a setback.",
+};
+
+// spec zmian §14: Near i Far pokazane osobno, każde z własną notatką i deltami
+function ProbeSection({ title, probe }: { title: string; probe: ProbeSummary }) {
+  const lines = Object.entries(probe.deltas)
+    .map(([key, d]) => deltaLine(key, d.value, d.baseline))
+    .filter((line): line is string => Boolean(line));
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-sm uppercase tracking-wide text-neutral-500">{title}</h2>
+      {probe.outcome_note && <p className="text-neutral-400">{probe.outcome_note}</p>}
+      {lines.length === 0 && <p className="text-neutral-500">No data yet.</p>}
+      {lines.map((line, i) => (
+        <p key={i} className="text-neutral-300">
+          {line}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+export default function SessionSummaryScreen({ summary, onBack, onSelfTranscription }: Props) {
+  const [transcriptionAvailable, setTranscriptionAvailable] = useState(false);
+
+  useEffect(() => {
+    api
+      .selfTranscriptionAvailable(summary.session_id)
+      .then((r) => setTranscriptionAvailable(r.available))
+      .catch(() => {});
+  }, [summary.session_id]);
+
   return (
     <div className="min-h-screen p-8">
-      <div className="mx-auto flex max-w-2xl flex-col gap-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-medium tracking-tight text-neutral-200">
-            Session #{summary.number} finished
-          </h1>
-          <p className="mt-2 font-mono text-sm text-neutral-500">
-            {summary.attempts} attempts
-            {summary.median_ttfw != null &&
-              ` · median start ${summary.median_ttfw.toFixed(2)} s`}
+      <div className="mx-auto flex max-w-xl flex-col gap-8">
+        <h1 className="text-xl text-neutral-300">Session summary</h1>
+
+        <p className="text-neutral-300">
+          {ENDED_REASON_TEXT[summary.ended_reason] ?? summary.ended_reason}
+        </p>
+
+        <ProbeSection title="Near transfer (versus your near median)" probe={summary.near} />
+        <ProbeSection title="Far transfer (versus your far median)" probe={summary.far} />
+
+        <section>
+          <p className="text-sm text-neutral-500">
+            Support level: {summary.support_ceiling}
+            {summary.support_changed === "down" && " (eased down since last time)"}
+            {summary.support_changed === "up" && " (brought back up a notch)"}
           </p>
-        </div>
+        </section>
 
-        {summary.fatigue_detected && (
-          <p className="text-center text-amber-400">
-            Start time rose sharply during this session - that is cognitive
-            fatigue, not regression.
-          </p>
+        {transcriptionAvailable && (
+          <button className="btn self-start" onClick={onSelfTranscription}>
+            Optional: transcribe your first round yourself
+          </button>
         )}
 
-        {summary.modules.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="text-left uppercase tracking-wide text-neutral-500">
-                  <th className="py-2 pr-4 font-normal">module</th>
-                  <th className="px-3 py-2 text-right font-normal">attempts</th>
-                  <th className="px-3 py-2 text-right font-normal">start</th>
-                  <th className="px-3 py-2 text-right font-normal">run length</th>
-                  <th className="px-3 py-2 text-right font-normal">long pauses</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.modules.map((m) => (
-                  <tr key={m.module} className="border-t border-neutral-800">
-                    <td className="py-2 pr-4 text-neutral-300">{m.module}</td>
-                    <td className="px-3 py-2 text-right font-mono text-neutral-400">
-                      {m.attempts}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-neutral-400">
-                      {m.median_ttfw != null ? `${m.median_ttfw.toFixed(2)} s` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-neutral-400">
-                      {m.median_mean_length_of_run != null
-                        ? `${m.median_mean_length_of_run.toFixed(1)} words`
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-neutral-400">
-                      {m.long_pause_total}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {fb && (
-          <div className="flex flex-col gap-6">
-            <p className="text-neutral-200">{fb.comment}</p>
-
-            {fb.went_well.length > 0 && (
-              <div>
-                <p className="mb-2 text-sm uppercase tracking-wide text-emerald-400">
-                  went well
-                </p>
-                <ul className="flex flex-col gap-1 text-neutral-300">
-                  {fb.went_well.map((s, i) => (
-                    <li key={i}>· {s}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {fb.to_improve.length > 0 && (
-              <div>
-                <p className="mb-2 text-sm uppercase tracking-wide text-sky-400">
-                  to work on
-                </p>
-                <ul className="flex flex-col gap-1 text-neutral-300">
-                  {fb.to_improve.map((s, i) => (
-                    <li key={i}>· {s}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {fb.grammar.length > 0 && (
-              <div>
-                <p className="mb-2 text-sm uppercase tracking-wide text-neutral-500">
-                  grammar patterns this session
-                </p>
-                <div className="flex flex-col gap-3">
-                  {fb.grammar.map((g, i) => (
-                    <div key={i} className="rounded border border-neutral-800 p-3">
-                      <p className="text-neutral-200">{g.pattern}</p>
-                      {g.example && (
-                        <p className="mt-1 font-mono text-sm text-neutral-400">
-                          {g.example}
-                        </p>
-                      )}
-                      {g.note && (
-                        <p className="mt-1 text-sm text-neutral-500">{g.note}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-neutral-600">
-                  Errors during fluent speech are part of the training - these
-                  patterns feed your long-term observations.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        <button className="btn self-center" onClick={onBack}>
-          done
+        <button className="btn self-start" onClick={onBack}>
+          Back
         </button>
       </div>
     </div>

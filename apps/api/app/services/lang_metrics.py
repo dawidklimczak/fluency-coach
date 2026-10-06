@@ -15,6 +15,9 @@ FALSE_START_PAUSE_S = 0.3
 MTLD_TTR_THRESHOLD = 0.72
 TOP_N_FREQUENT = 2000
 
+# spójniki podrzędne i klauzule podrzędne (dep_ spaCy) - granica AS-unit (spec 5)
+SUBORDINATE_DEPS = {"advcl", "ccomp", "acl", "relcl", "csubj", "csubjpass"}
+
 # słowa funkcyjne do detekcji fałszywych startów i dystansu leksykalnego
 FUNCTION_POS = {"ADP", "AUX", "CCONJ", "DET", "PART", "PRON", "SCONJ", "PUNCT", "INTJ"}
 FUNCTION_WORDS = {
@@ -166,11 +169,63 @@ def compute_language_metrics(
             m["mean_length_utterance"] = round(
                 sum(sum(1 for t in s if t.is_alpha) for s in sents) / len(sents), 2
             )
-            sub_deps = {"advcl", "ccomp", "acl", "relcl", "csubj", "csubjpass"}
-            sub_clauses = sum(1 for t in doc if t.dep_ in sub_deps)
+            sub_clauses = sum(1 for t in doc if t.dep_ in SUBORDINATE_DEPS)
             m["subordination_index"] = round(sub_clauses / len(sents), 3)
 
     return m
+
+
+def clause_boundaries(
+    transcript: str, words: list[dict] | None
+) -> tuple[set[int], float]:
+    """Indeksy w `words` rozpoczynające nową klauzulę (heurystyka AS-unit, spec 5.1).
+
+    Granica: początek zdania, początek klauzuli podrzędnej (SUBORDINATE_DEPS)
+    lub spójnik współrzędny łączący dwa orzeczenia (conj z własnym nsubj).
+    To przybliżenie oparte na zależnościowym parserze spaCy, nie prawdziwa
+    segmentacja AS-unit - stąd confidence: 1.0 gdy spaCy dostępny i sparsował
+    tekst, 0.0 gdy spaCy niedostępny (wołający powinien wtedy pominąć metryki
+    wymagające podziału na klauzule).
+    """
+    if not words:
+        return set(), 0.0
+    nlp = get_nlp()
+    if nlp is None:
+        return set(), 0.0
+    doc = nlp(transcript)
+
+    # przybliżone przypisanie słów Whispera do offsetów znakowych transkryptu
+    starts: list[int] = []
+    cursor = 0
+    for wd in words:
+        token = wd["word"]
+        idx = transcript.find(token, cursor)
+        if idx == -1:
+            idx = cursor
+        starts.append(idx)
+        cursor = idx + len(token)
+
+    def word_index_for_char(pos: int) -> int | None:
+        for i in range(len(starts) - 1, -1, -1):
+            if starts[i] <= pos:
+                return i
+        return None
+
+    boundary_chars: set[int] = set()
+    for sent in doc.sents:
+        if any(t.is_alpha for t in sent):
+            boundary_chars.add(sent[0].idx)
+    for tok in doc:
+        if tok.dep_ in SUBORDINATE_DEPS:
+            boundary_chars.add(tok.left_edge.idx)
+        elif tok.dep_ == "conj" and tok.pos_ in {"VERB", "AUX"}:
+            if any(c.dep_ == "nsubj" for c in tok.children):
+                left = tok.left_edge
+                boundary_chars.add(left.idx if left.pos_ == "CCONJ" else tok.idx)
+
+    indices = {word_index_for_char(c) for c in boundary_chars}
+    indices.discard(None)
+    return indices, 1.0
 
 
 def content_lemmas(text: str) -> set[str]:

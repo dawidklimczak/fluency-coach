@@ -8,69 +8,73 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { api, ModuleInfo } from "../api/client";
+import { api } from "../api/client";
 
-// spec ekran 6: szeregi czasowe ttfw, mean_length_of_run, complexity_fluency_tradeoff
+// spec §3/§5: tylko sondy transferowe idą na wykres postępu, tylko delta -
+// tu pokazujemy surowe serie, deltę widać na ekranie podsumowania sesji
 const CHARTS: { key: string; label: string; unit: string }[] = [
-  { key: "ttfw", label: "time to first word", unit: "s" },
   { key: "mean_length_of_run", label: "mean length of run", unit: "words" },
-  { key: "complexity_fluency_tradeoff", label: "complexity / fluency trade-off", unit: "" },
+  { key: "phonation_time_ratio", label: "phonation time ratio", unit: "" },
+  { key: "mid_clause_pause_duration", label: "mid-clause pause duration", unit: "s" },
+  { key: "clause_final_pause_duration", label: "clause-final pause duration", unit: "s" },
 ];
 
-const LINE = "#10b981"; // emerald-500 - jedna seria na wykres, bez legendy
+const LINE = "#10b981";
 const GRID = "#262626";
 const INK_MUTED = "#737373";
 
+// spec zmian §7: far jest głównym KPI generalizacji, stąd domyślny wybór
+type ProbeFilter = "far" | "near" | "legacy";
+const PROBE_FILTERS: { value: ProbeFilter; label: string }[] = [
+  { value: "far", label: "Far transfer" },
+  { value: "near", label: "Near transfer" },
+  { value: "legacy", label: "Legacy" },
+];
+
 export default function ProgressScreen({ onBack }: { onBack: () => void }) {
-  const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const [module, setModule] = useState<string>("");
   const [series, setSeries] = useState<Record<string, number | string | null>[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [probeType, setProbeType] = useState<ProbeFilter>("far");
 
   useEffect(() => {
     api
-      .modules()
-      .then((ms) => {
-        setModules(ms);
-        if (ms.length > 0) setModule(ms[0].id);
-      })
-      .catch((e) => setError(String(e)));
-  }, []);
-
-  useEffect(() => {
-    if (!module) return;
-    api
-      .progress(module, 30)
+      .progress(90, probeType)
       .then((p) => setSeries(p.series))
       .catch((e) => setError(String(e)));
-  }, [module]);
+  }, [probeType]);
 
   return (
     <div className="min-h-screen p-8">
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl text-neutral-300">Progress · last 30 days</h1>
-          <div className="flex items-center gap-4">
-            <select
-              className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-300"
-              value={module}
-              onChange={(e) => setModule(e.target.value)}
+          <h1 className="text-xl text-neutral-300">Progress · transfer probes, last 90 days</h1>
+          <button className="text-sm text-neutral-500 underline" onClick={onBack}>
+            back
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          {PROBE_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              className={
+                "rounded border px-3 py-1 text-sm " +
+                (probeType === f.value
+                  ? "border-emerald-600 text-emerald-400"
+                  : "border-neutral-800 text-neutral-500")
+              }
+              onClick={() => setProbeType(f.value)}
             >
-              {modules.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-            <button className="text-sm text-neutral-500 underline" onClick={onBack}>
-              back
+              {f.label}
             </button>
-          </div>
+          ))}
         </div>
 
         {error && <p className="text-red-400">{error}</p>}
         {series.length === 0 && !error && (
-          <p className="text-neutral-500">No attempts in this range yet.</p>
+          <p className="text-neutral-500">
+            No transfer probes yet - this only fills in after a few completed sessions.
+          </p>
         )}
 
         {series.length > 0 &&

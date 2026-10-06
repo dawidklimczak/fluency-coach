@@ -9,15 +9,16 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .db import init_db
 from .routers import (
-    attempts,
     auth as auth_router,
     calibrate,
-    learning_sessions,
+    conversation,
+    diagnostics,
+    profile,
     reading,
-    sessions,
+    recovery,
     settings as settings_router,
+    speaking_sessions,
     stats,
-    tasks,
 )
 from .services import auth
 from .services.retention import cleanup_old_audio
@@ -87,13 +88,14 @@ async def auth_gate(request: Request, call_next):
 
 app.include_router(auth_router.router)
 app.include_router(settings_router.router)
-app.include_router(learning_sessions.router)
-app.include_router(sessions.router)
-app.include_router(attempts.router)
 app.include_router(calibrate.router)
 app.include_router(reading.router)
 app.include_router(stats.router)
-app.include_router(tasks.router)
+app.include_router(profile.router)
+app.include_router(speaking_sessions.router)
+app.include_router(diagnostics.router)
+app.include_router(recovery.router)
+app.include_router(conversation.router)
 
 
 @app.get("/api/health")

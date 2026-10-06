@@ -1,5 +1,7 @@
-"""Retencja audio (spec sekcja 6): pliki starsze niż N dni są kasowane,
-metryki i transkrypcje zostają."""
+"""Siatka bezpieczeństwa dla retencji audio (spec §6): normalnie audio jest
+kasowane od razu po analizie w tym samym przebiegu przetwarzania (Attempt
+i ReadingAttempt nie zostawiają plików na dysku). Ten sweep sprząta jedynie
+to, co zostało po przerwanym/awaryjnym przetwarzaniu."""
 
 import logging
 from datetime import datetime, timedelta, timezone

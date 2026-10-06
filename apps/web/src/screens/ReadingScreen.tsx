@@ -23,6 +23,13 @@ const MAX_STRUCTURES = 3;
 const SLOWER = "57, 135, 229"; // #3987e5
 const FASTER = "230, 103, 103"; // #e66767
 
+function formatDuration(seconds: number): string {
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function speedStyle(wpm: number | null | undefined, target: number): React.CSSProperties {
   if (wpm == null) return {};
   const deviation = (wpm - target) / target;
@@ -267,6 +274,10 @@ export default function ReadingScreen({ onBack }: { onBack: () => void }) {
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <Stat
+              label="reading time"
+              value={formatDuration(metrics.duration_s)}
+            />
             <Stat
               label="your pace"
               value={metrics.wpm != null ? `${metrics.wpm}` : "—"}

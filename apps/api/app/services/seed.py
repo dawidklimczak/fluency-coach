@@ -1,71 +1,70 @@
 import json
+import logging
 from functools import lru_cache
 
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..models import Attempt, ModuleState, Task, User
+from ..models import KnownVocabulary, User
+
+logger = logging.getLogger(__name__)
+
+TOP_N_KNOWN_WORDS = 3000
 
 
 @lru_cache
-def seed_file() -> dict:
-    path = get_settings().seed_tasks_path
+def language_config_file() -> dict:
+    path = get_settings().language_config_path
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def seed_config() -> dict:
-    """Sekcja config z seed_tasks.json: fillers, repair_markers, progi pauz, prompt Whispera."""
-    return seed_file().get("config", {})
+def language_config() -> dict:
+    """fillers, repair_markers, progi pauz, prompt Whispera."""
+    return language_config_file().get("config", {})
 
 
 def structures() -> list[dict]:
-    return seed_file().get("structures", [])
+    """Struktury gramatyczne do promptów generatora tekstów czytania.
+
+    UWAGA: to jest wyłącznie lista opisowa (label/hint/example) do budowania
+    promptów LLM dla trenera czytania - nie ma tu detekcji ani filtra jak w
+    usuniętym module fluency. Trener czytania nie wymaga treningu płynności
+    (czyta z kartki), więc splatanie struktur w tekst nie łamie warunków
+    z Nation (spec §1b).
+    """
+    return language_config_file().get("structures", [])
 
 
 def ensure_seeded(db: Session) -> None:
     if db.query(User).count() == 0:
         db.add(User(id=1))
+        db.commit()
 
-    data = seed_file()
-    existing = {t.id: t for t in db.query(Task).all()}
-    for t in data.get("tasks", []):
-        row = existing.get(t["id"])
-        if row is not None:
-            # upsert: plik seed jest źródłem prawdy dla zadań source=seed
-            if row.source == "seed":
-                row.module = t["module"]
-                row.difficulty = t["difficulty"]
-                row.target_structure = t.get("target_structure")
-                row.prompt_text = t["prompt_text"]
-                row.payload = t.get("payload")
-                row.tags = t.get("tags")
-            continue
-        db.add(
-            Task(
-                id=t["id"],
-                module=t["module"],
-                difficulty=t["difficulty"],
-                target_structure=t.get("target_structure"),
-                structure_mode=None,
-                prompt_text=t["prompt_text"],
-                payload=t.get("payload"),
-                tags=t.get("tags"),
-                source="seed",
-            )
-        )
+    if db.query(KnownVocabulary).count() > 0:
+        return
 
-    # zadania seed usunięte z pliku znikają też z bazy (o ile nie mają prób)
-    file_ids = {t["id"] for t in data.get("tasks", [])}
-    used_ids = {r[0] for r in db.query(Attempt.task_id).distinct().all()}
-    for task_id, row in existing.items():
-        if row.source == "seed" and task_id not in file_ids and task_id not in used_ids:
-            db.delete(row)
+    try:
+        from wordfreq import top_n_list
 
-    modules = {t["module"] for t in data.get("tasks", [])}
-    existing_states = {row[0] for row in db.query(ModuleState.module).all()}
-    for m in modules:
-        if m not in existing_states:
-            db.add(ModuleState(module=m, difficulty=1))
+        words = top_n_list("en", TOP_N_KNOWN_WORDS)
+    except Exception:
+        logger.warning("wordfreq niedostępny - KnownVocabulary startuje pusty")
+        words = []
+
+    for w in words:
+        db.add(KnownVocabulary(lemma=w, source="top3000"))
+
+    import_path = get_settings().known_vocabulary_import_path
+    if import_path.exists():
+        try:
+            extra = json.loads(import_path.read_text(encoding="utf-8"))
+            existing = set(words)
+            for w in extra:
+                if w not in existing:
+                    db.add(KnownVocabulary(lemma=w, source="import"))
+                    existing.add(w)
+        except Exception:
+            logger.exception("Import własnego słownictwa nie powiódł się (%s)", import_path)
 
     db.commit()

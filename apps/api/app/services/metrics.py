@@ -46,28 +46,37 @@ def _internal_pauses(
 
 
 def _classify_pause_positions(
-    pauses: list[Pause], words: list[dict]
-) -> tuple[int, int]:
-    """Zwraca (mid_clause, boundary).
+    pauses: list[Pause],
+    words: list[dict],
+    clause_boundary_indices: set[int] | None = None,
+) -> tuple[list[Pause], list[Pause]]:
+    """Zwraca (mid_clause_pauses, boundary_pauses).
 
-    Pauza jest mid-clause, jeśli nie występuje bezpośrednio po znaku
-    interpunkcyjnym w transkrypcji ani przed spójnikiem rozpoczynającym
-    nowe zdanie (spec 5.1).
+    Pauza jest boundary (nie mid-clause), jeśli występuje bezpośrednio po
+    znaku interpunkcyjnym w transkrypcji, przed spójnikiem rozpoczynającym
+    nowe zdanie, lub - gdy dostępna - przed słowem oznaczonym jako początek
+    nowej klauzuli przez lang_metrics.clause_boundaries (spec 5.1).
     """
     if not words:
-        return 0, len(pauses)
-    mid = 0
-    boundary = 0
+        return [], list(pauses)
+    mid: list[Pause] = []
+    boundary: list[Pause] = []
     for pause in pauses:
         before = [w for w in words if w["end"] <= pause.start + 0.15]
-        after = [w for w in words if w["start"] >= pause.end - 0.15]
+        after_idx = next(
+            (i for i, w in enumerate(words) if w["start"] >= pause.end - 0.15), None
+        )
         prev_word = before[-1]["word"].strip() if before else ""
-        next_word = after[0]["word"].strip().lower() if after else ""
+        next_word = (
+            words[after_idx]["word"].strip().lower() if after_idx is not None else ""
+        )
         next_word = re.sub(r"[^a-z']", "", next_word)
-        if prev_word.endswith(SENTENCE_PUNCT) or next_word in BOUNDARY_CONJUNCTIONS:
-            boundary += 1
-        else:
-            mid += 1
+        is_boundary = (
+            prev_word.endswith(SENTENCE_PUNCT) or next_word in BOUNDARY_CONJUNCTIONS
+        )
+        if not is_boundary and clause_boundary_indices and after_idx in clause_boundary_indices:
+            is_boundary = True
+        (boundary if is_boundary else mid).append(pause)
     return mid, boundary
 
 
@@ -113,6 +122,8 @@ def compute_metrics(
     words: list[dict] | None,
     transcript: str | None,
     fillers: list[str] | None = None,
+    clause_boundary_indices: set[int] | None = None,
+    clause_segmentation_confidence: float = 0.0,
 ) -> dict:
     """Metryki per próba. segments i words w sekundach absolutnych nagrania."""
     words = words or []
@@ -128,7 +139,10 @@ def compute_metrics(
 
     pauses = _internal_pauses(segs)
     long_pauses = [p for p in pauses if p.duration >= LONG_PAUSE_S]
-    mid, boundary = _classify_pause_positions(pauses, words)
+    mid_pauses, boundary_pauses = _classify_pause_positions(
+        pauses, words, clause_boundary_indices
+    )
+    mid, boundary = len(mid_pauses), len(boundary_pauses)
     runs = _runs(words, pauses)
 
     ttfw = (segs[0][0] - t0_s) if segs else None
@@ -152,6 +166,23 @@ def compute_metrics(
         "mid_clause_pause_count": mid if words else None,
         "mid_clause_pause_rate": (
             round(mid / speaking_minutes, 2) if words else None
+        ),
+        "clause_segmentation_confidence": clause_segmentation_confidence,
+        "mid_clause_pause_duration": (
+            round(sum(p.duration for p in mid_pauses) / len(mid_pauses), 3)
+            if mid_pauses
+            else None
+        ),
+        "mid_clause_pause_frequency": (
+            round(len(mid_pauses) / speaking_minutes, 2) if words else None
+        ),
+        "clause_final_pause_duration": (
+            round(sum(p.duration for p in boundary_pauses) / len(boundary_pauses), 3)
+            if boundary_pauses
+            else None
+        ),
+        "clause_final_pause_frequency": (
+            round(len(boundary_pauses) / speaking_minutes, 2) if words else None
         ),
         "longest_speech_segment_s": (
             round(max(e - s for s, e in segs), 2) if segs else None
