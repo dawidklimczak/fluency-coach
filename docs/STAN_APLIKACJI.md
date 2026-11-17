@@ -1,6 +1,6 @@
 # Stan aplikacji — Speaking Automaticity Trainer
 
-*Dokument opisuje aktualny stan kodu w working tree (2026-09-03), nie stan ostatniego commita.*
+*Dokument opisuje aktualny stan kodu w working tree (2026-11-16), nie stan ostatniego commita. Sekcja „Codzienna ścieżka” jest najnowsza; sekcje pod nią opisują starsze moduły, dostępne dziś z „more → Lab”, a ich opisy ekranu startowego i nawigacji są nieaktualne.*
 
 > **Ważne:** repozytorium ma duże niezacommitowane zmiany. Cały stary model oparty
 > na 8 modułach ćwiczeniowych ("drills") został w working tree usunięty i zastąpiony
@@ -20,6 +20,117 @@
 > kolejności warunków A/B/C w diagnostyce, osobny tryb ćwiczenia chunków wg
 > priorytetu z §5.2 specyfikacji, dalsze strojenie formuł `support.py` o sygnały
 > diagnostyczne.
+
+## Codzienna ścieżka: rundy gramatyczne i shadowing (2026-11-16)
+
+Od 2026-11-16 to jest rdzeń aplikacji. Ekran startowy ma jeden duży przycisk
+„Start”, a wszystko opisane w pozostałych sekcjach (sesja 40-minutowa, rozmowa
+GPT-Live, diagnostyka, recovery drill) jest schowane pod „more → Lab”. Powody
+i dane, które do tego doprowadziły, są w `docs/PLAN_ZMIAN.md`.
+
+### Mapa umiejętności
+
+- Umiejętność = para **znaczenie → kształt zdania** (np. „żałuję czegoś z
+  przeszłości” → `if + had + past participle, would have + past participle`).
+  Katalog 56 umiejętności w 12 grupach leży w `data/grammar_skills.json`;
+  kolejność listy to kolejność wprowadzania. Nazwy szkolne są tylko w dymku.
+  Przedimków celowo nie ma: rozpoznawanie mowy po cichu je naprawia.
+- Postęp w tabeli `grammar_skills`, reguły w `services/skills.py` (czysta
+  logika, testy w `tests/test_skills.py`). Poziomy: 0 nowa, 1 z pomocą,
+  2 samodzielnie, 3 pewnie, 4 trwale.
+  - Pierwsze zetknięcie to **sonda bez pomocy**: poprawna odpowiedź od razu daje
+    poziom 2, błędna poziom 1. Dzięki temu nie ma osobnego testu poziomującego
+    i nie ćwiczy się tego, co już się umie.
+  - Poziom 1: dwa poprawne z widocznym kształtem i początkiem zdania, potem
+    sama sytuacja (z podpowiedzią na życzenie); cztery poprawne dają poziom 2.
+  - Poziom 2: trzy poprawne pod rząd, ostatnia szybka (albo pięć bez względu
+    na tempo), dają poziom 3. Dwa błędy pod rząd wracają do poziomu 1.
+  - Poziom 3: musi przetrwać przerwy 3, 7 i 21 dni, wtedy poziom 4 (kontrola
+    co 45, potem co 90 dni). Błąd na powtórce cofa o poziom.
+  - „Szybko” = start odpowiedzi poniżej `2000 ms + 300 ms × liczba słów
+    polecenia`, bo nagrywanie rusza razem z pojawieniem się polecenia.
+
+### Bank zadań
+
+- Tabela `grammar_items`; formaty: `guided` (sytuacja + kształt + pierwsze
+  słowa), `situation`, `translate` (polskie zdanie, w którym polszczyzna
+  podpowiada błąd), `fix` (ktoś mówi z błędem), `personal` (pytanie o
+  użytkownika), `own` (własne błędy z wklejonej rozmowy).
+- Startowy bank (950 zadań, 17 na umiejętność) jest w repo:
+  `data/grammar_seed_items.json`, ładowany przy pierwszym użyciu. Buduje go
+  `apps/api/scripts/build_seed_bank.py`.
+- `services/grammar.py::top_up` dogenerowuje w tle porcję zadań
+  (`prompts/generate_grammar_items.md`) dla umiejętności, którym zostało mniej
+  niż 4 nieużyte zadania. Odpalane po wejściu na ekran startowy i po rundzie.
+  `valid_generated` odrzuca zadania zdradzające odpowiedź.
+
+### Runda
+
+- `POST /api/grammar/rounds` składa rundę z banku bez wywołań LLM (ok. 0,3 s):
+  do 3 powtórek po przerwie, do 2 umiejętności „w nauce” po 2 zadania, po
+  jednym zadaniu z ćwiczonych samodzielnie i sondy nowych (do 6; żadnych, gdy
+  w nauce są już 3). Razem 8 zadań, wymieszane.
+- Odpowiedź (`POST /rounds/{id}/answers`) jest oceniana **od razu** w tle:
+  czas reakcji z VAD → transkrypcja (`transcription.transcribe_text`, model
+  `OPENAI_ANSWER_STT_MODEL`, bez promptu) → jedno żądanie oceniające
+  (`prompts/grade_grammar_answer.md`, model `OPENAI_GRADE_MODEL`) → zmiana
+  poziomu. Werdykty: correct / incorrect / avoided / unclear; do błędu dochodzi
+  poprawiona wersja, jedno zdanie wyjaśnienia po angielsku i, gdy błąd wynika
+  z polszczyzny, jedno zdanie po polsku.
+- Po błędzie frontend prosi o `POST /rounds/{id}/extra`: ta sama umiejętność
+  wraca na końcu rundy w innej sytuacji (najwyżej 2 razy na rundę).
+- `POST /rounds/{id}/skip` („I don't know”) liczy się jak błąd bez LLM.
+- `POST /rounds/{id}/end` zwraca wynik, listę awansów i dane ekranu
+  startowego. Przerwana runda niczego nie traci.
+- Pozostałe: `GET /api/grammar/home`, `GET /api/grammar/map`.
+
+### Most do rozmów w subskrypcji
+
+- `GET /api/grammar/talk-prompt`: gotowy tekst do wklejenia w rozmowie
+  głosowej poza aplikacją, ułożony pod umiejętności w toku (bez LLM).
+- `POST /api/grammar/transcript`: z wklejonego zapisu rozmowy LLM
+  (`prompts/review_transcript.md`) wyciąga błędy użytkownika i przypisuje je do
+  umiejętności. Powstają z nich zadania `own`, nowa umiejętność trafia od razu
+  do nauki, a poprawne spontaniczne użycia zwiększają `wild_uses` (gwiazdka
+  na mapie).
+
+### Shadowing
+
+- `services/shadow.py`, `routers/shadow.py`, tabele `shadow_passages`,
+  `shadow_attempts`. Fragment (60-85 słów, krótkie zdania) pisze LLM pod
+  umiejętności w toku (`prompts/generate_shadow_passage.md`), głos to synteza
+  mowy (`OPENAI_TTS_MODEL`, plik mp3 w `data/shadow/`, generowany raz), czasy
+  słów wzorca pochodzą z transkrypcji tego nagrania.
+- W zapasie czekają zawsze 2 nieużyte fragmenty (`ensure_stock`, w tle).
+- Podejście: przeglądarka odtwarza wzorzec i równolegle nagrywa mikrofon
+  (potrzebne słuchawki). Analiza reużywa dopasowania z trenera czytania i
+  podaje: jaki procent słów padł, w którym zdaniu użytkownik odpadł i czy
+  opóźnienie rosło w trakcie. **Wymowy, akcentu i intonacji nie ocenia.**
+  Opóźnienie bezwzględne nie jest pokazywane, bo słuchawki Bluetooth je
+  zafałszowują.
+- Na trudnym zdaniu frontend oferuje pętlę (0,85× i 1,0×) oraz odsłuch
+  „lektor, potem ja” z nagrania trzymanego w pamięci przeglądarki.
+
+### Modele (zmienne środowiskowe)
+
+| Zmienna | Domyślnie | Do czego |
+|---|---|---|
+| `OPENAI_GRAMMAR_MODEL` | `gpt-6-sol` | pisanie zadań, fragmentów do shadowingu, analiza rozmowy (w tle) |
+| `OPENAI_GRADE_MODEL` | `gpt-4.1` | ocena jednej odpowiedzi (ok. 1 s) |
+| `OPENAI_ANSWER_STT_MODEL` | `gpt-4o-mini-transcribe` | transkrypcja odpowiedzi w rundzie |
+| `OPENAI_TTS_MODEL` | `gpt-4o-mini-tts` | głos do shadowingu |
+
+### Ekrany
+
+`HomeScreen` (Start, shadowing, pasek mapy, dni tygodnia), `PracticeScreen`
+(runda), `MapScreen`, `ShadowScreen`, `TalkScreen` (most do rozmów),
+`MoreScreen` (trener czytania, „About me”, ustawienia, Lab). Interfejs jest po
+angielsku; polski pojawia się tylko w zadaniach `translate`, w etykietach
+mapy i w zdaniu kontrastu przy błędzie.
+
+Stary moduł „Grammar drills” (jedna sesja ok. 50 zadań oceniana na końcu)
+został usunięty; tabele `grammar_sessions` i `grammar_results` zostają w bazie
+tylko jako historia.
 
 ## Cel aplikacji
 

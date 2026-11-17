@@ -4,7 +4,11 @@ import BottleneckProfileScreen from "./screens/BottleneckProfileScreen";
 import CalibrationScreen from "./screens/CalibrationScreen";
 import ConversationScreen from "./screens/ConversationScreen";
 import DiagnosticScreen from "./screens/DiagnosticScreen";
+import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
+import MapScreen from "./screens/MapScreen";
+import MoreScreen from "./screens/MoreScreen";
+import PracticeScreen from "./screens/PracticeScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import ProgressScreen from "./screens/ProgressScreen";
 import ReadingScreen from "./screens/ReadingScreen";
@@ -13,21 +17,29 @@ import SelfTranscriptionScreen from "./screens/SelfTranscriptionScreen";
 import SessionScreen from "./screens/SessionScreen";
 import SessionSummaryScreen from "./screens/SessionSummaryScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-import StartScreen from "./screens/StartScreen";
+import ShadowScreen from "./screens/ShadowScreen";
+import TalkScreen from "./screens/TalkScreen";
 
+// Codzienna ścieżka: home -> practice (rundy gramatyczne) / shadow.
+// Wszystko od "more" w dół to narzędzia poboczne i stare moduły pomiarowe.
 type View =
   | { name: "loading" }
   | { name: "login" }
-  | { name: "start" }
+  | { name: "home" }
+  | { name: "practice" }
+  | { name: "shadow" }
+  | { name: "map" }
+  | { name: "talk" }
+  | { name: "more" }
   | { name: "calibrate" }
-  | { name: "settings" }
+  | { name: "settings"; from: "home" | "more" }
   | { name: "profile" }
   | { name: "reading" }
   | { name: "progress" }
   | { name: "session" }
   | { name: "sessionSummary"; summary: SessionSummary }
   | { name: "selfTranscription"; sessionId: number }
-  | { name: "diagnostic"; languageControlEnabled: boolean }
+  | { name: "diagnostic" }
   | { name: "diagnosticNote"; note: string[] | null }
   | { name: "bottleneckProfile" }
   | { name: "recoveryDrill" }
@@ -38,31 +50,29 @@ export default function App() {
   const [calibrated, setCalibrated] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
 
-  const handleError = useCallback((e: unknown) => {
-    if (e instanceof UnauthorizedError) setView({ name: "login" });
-    else setFatal(String(e));
-  }, []);
+  const home = useCallback(() => setView({ name: "home" }), []);
 
-  const refreshStart = useCallback(async () => {
-    const status = await api.calibrationStatus();
-    setCalibrated(status.calibrated);
-    setView({ name: "start" });
+  const more = useCallback(async () => {
+    try {
+      // kalibracji wymaga tylko stara długa sesja, więc sprawdzamy ją dopiero tutaj
+      setCalibrated((await api.calibrationStatus()).calibrated);
+      setView({ name: "more" });
+    } catch (e) {
+      if (e instanceof UnauthorizedError) setView({ name: "login" });
+      else setFatal(String(e));
+    }
   }, []);
 
   const boot = useCallback(async () => {
     setView({ name: "loading" });
     try {
       const auth = await api.authState();
-      if (!auth.authenticated) {
-        setView({ name: "login" });
-        return;
-      }
-      await refreshStart();
+      setView(auth.authenticated ? { name: "home" } : { name: "login" });
     } catch (e) {
       if (e instanceof UnauthorizedError) setView({ name: "login" });
       else setFatal(`Backend unavailable: ${e}`);
     }
-  }, [refreshStart]);
+  }, []);
 
   useEffect(() => {
     boot();
@@ -81,83 +91,85 @@ export default function App() {
 
   switch (view.name) {
     case "loading":
-      return (
-        <div className="flex min-h-screen items-center justify-center text-neutral-500">
-          Loading...
-        </div>
-      );
+      return <div className="flex min-h-screen items-center justify-center text-neutral-600">...</div>;
     case "login":
       return <LoginScreen onSuccess={boot} />;
-    case "start":
+    case "home":
       return (
-        <StartScreen
+        <HomeScreen
+          onPractice={() => setView({ name: "practice" })}
+          onShadow={() => setView({ name: "shadow" })}
+          onMap={() => setView({ name: "map" })}
+          onTalk={() => setView({ name: "talk" })}
+          onMore={more}
+          onSettings={() => setView({ name: "settings", from: "home" })}
+        />
+      );
+    case "practice":
+      return <PracticeScreen onDone={home} onShadow={() => setView({ name: "shadow" })} />;
+    case "shadow":
+      return <ShadowScreen onBack={home} onPractice={() => setView({ name: "practice" })} />;
+    case "map":
+      return <MapScreen onBack={home} />;
+    case "talk":
+      return <TalkScreen onBack={home} onPractice={() => setView({ name: "practice" })} />;
+    case "more":
+      return (
+        <MoreScreen
           calibrated={calibrated}
-          onStartSession={() => setView({ name: "session" })}
-          onCalibrate={() => setView({ name: "calibrate" })}
-          onSettings={() => setView({ name: "settings" })}
-          onProfile={() => setView({ name: "profile" })}
+          onBack={home}
           onReading={() => setView({ name: "reading" })}
-          onProgress={() => setView({ name: "progress" })}
-          onDiagnostic={(languageControlEnabled) =>
-            setView({ name: "diagnostic", languageControlEnabled })
-          }
-          onBottleneckProfile={() => setView({ name: "bottleneckProfile" })}
-          onRecoveryDrill={() => setView({ name: "recoveryDrill" })}
+          onProfile={() => setView({ name: "profile" })}
+          onSettings={() => setView({ name: "settings", from: "more" })}
+          onCalibrate={() => setView({ name: "calibrate" })}
+          onSession={() => setView({ name: "session" })}
           onConversation={() => setView({ name: "conversation" })}
+          onRecoveryDrill={() => setView({ name: "recoveryDrill" })}
+          onDiagnostic={() => setView({ name: "diagnostic" })}
+          onBottleneckProfile={() => setView({ name: "bottleneckProfile" })}
+          onProgress={() => setView({ name: "progress" })}
         />
       );
     case "settings":
       return (
         <SettingsScreen
-          onBack={() => refreshStart().catch(handleError)}
+          onBack={view.from === "home" ? home : more}
           onLoggedOut={() => setView({ name: "login" })}
         />
       );
     case "profile":
-      return <ProfileScreen onBack={() => refreshStart().catch(handleError)} />;
+      return <ProfileScreen onBack={more} />;
     case "reading":
-      return <ReadingScreen onBack={() => refreshStart().catch(handleError)} />;
+      return <ReadingScreen onBack={more} />;
     case "progress":
-      return <ProgressScreen onBack={() => refreshStart().catch(handleError)} />;
+      return <ProgressScreen onBack={more} />;
     case "calibrate":
-      return (
-        <CalibrationScreen
-          onDone={() => {
-            setCalibrated(true);
-            refreshStart().catch(handleError);
-          }}
-        />
-      );
+      return <CalibrationScreen onDone={more} />;
     case "session":
       return (
         <SessionScreen
           onDone={(summary) => setView({ name: "sessionSummary", summary })}
-          onAbort={() => refreshStart().catch(handleError)}
+          onAbort={more}
         />
       );
     case "sessionSummary":
       return (
         <SessionSummaryScreen
           summary={view.summary}
-          onBack={() => refreshStart().catch(handleError)}
+          onBack={more}
           onSelfTranscription={() =>
             setView({ name: "selfTranscription", sessionId: view.summary.session_id })
           }
         />
       );
     case "selfTranscription":
-      return (
-        <SelfTranscriptionScreen
-          sessionId={view.sessionId}
-          onDone={() => refreshStart().catch(handleError)}
-        />
-      );
+      return <SelfTranscriptionScreen sessionId={view.sessionId} onDone={more} />;
     case "diagnostic":
       return (
         <DiagnosticScreen
-          languageControlEnabled={view.languageControlEnabled}
+          languageControlEnabled={false}
           onDone={(note) => setView({ name: "diagnosticNote", note })}
-          onAbort={() => refreshStart().catch(handleError)}
+          onAbort={more}
         />
       );
     case "diagnosticNote":
@@ -173,22 +185,17 @@ export default function App() {
             {(!view.note || view.note.length === 0) && (
               <p className="text-neutral-500">Nothing stands out yet - that's fine too.</p>
             )}
-            <button className="btn self-start" onClick={() => refreshStart().catch(handleError)}>
+            <button className="btn self-start" onClick={more}>
               Back
             </button>
           </div>
         </div>
       );
     case "conversation":
-      return <ConversationScreen onBack={() => refreshStart().catch(handleError)} />;
+      return <ConversationScreen onBack={more} />;
     case "bottleneckProfile":
-      return <BottleneckProfileScreen onBack={() => refreshStart().catch(handleError)} />;
+      return <BottleneckProfileScreen onBack={more} />;
     case "recoveryDrill":
-      return (
-        <RecoveryDrillScreen
-          onDone={() => refreshStart().catch(handleError)}
-          onAbort={() => refreshStart().catch(handleError)}
-        />
-      );
+      return <RecoveryDrillScreen onDone={more} onAbort={more} />;
   }
 }

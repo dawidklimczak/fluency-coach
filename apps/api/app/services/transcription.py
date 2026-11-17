@@ -20,6 +20,33 @@ def transcription_enabled() -> bool:
     return bool(openai_api_key()) and not get_settings().mock_transcription
 
 
+def transcribe_text(audio_path: Path) -> str | None:
+    """Sam tekst, bez znaczników czasu - dla krótkich odpowiedzi w rundach Grammar.
+
+    Używa szybszego modelu (ustawienie openai_answer_stt_model), bo tam liczy
+    się czas do werdyktu, a czasy słów nie są potrzebne. Bez promptu: niczego
+    nie podpowiadamy, żeby rozpoznawanie nie "naprawiało" gramatyki. Gdy szybki
+    model zawiedzie, wraca do whisper-1.
+    """
+    if not transcription_enabled():
+        return None
+    model = get_settings().openai_answer_stt_model
+    if model and model != WHISPER_MODEL:
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=openai_api_key(), timeout=30)
+            with open(audio_path, "rb") as f:
+                result = client.audio.transcriptions.create(
+                    model=model, file=f, language="en", temperature=0
+                )
+            return (result.text or "").strip()
+        except Exception:
+            logger.exception("Szybka transkrypcja nie powiodła się, próbuję %s", WHISPER_MODEL)
+    fallback = transcribe(audio_path, prompt="")
+    return fallback["text"].strip() if fallback else None
+
+
 def transcribe(audio_path: Path, prompt: str | None = None) -> dict | None:
     """Zwraca {"text": str, "words": [{word, start, end}]} albo None.
 

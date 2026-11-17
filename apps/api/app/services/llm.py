@@ -21,6 +21,9 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 T = TypeVar("T", bound=BaseModel)
 
+# modele, które odrzuciły parametr temperature (zapamiętane na czas procesu)
+_NO_TEMPERATURE: set[str] = set()
+
 
 def llm_enabled() -> bool:
     return bool(openai_api_key())
@@ -34,23 +37,45 @@ def load_prompt(name: str, variables: dict[str, str]) -> str:
     return text
 
 
-def complete_json(prompt_name: str, variables: dict[str, str], schema: type[T]) -> T | None:
+def complete_json(
+    prompt_name: str,
+    variables: dict[str, str],
+    schema: type[T],
+    *,
+    model: str | None = None,
+    timeout: float | None = None,
+    temperature: float | None = None,
+) -> T | None:
+    """model/timeout są opcjonalne - domyślnie jak dotąd (model z ustawień, bez timeoutu)."""
     if not llm_enabled():
         return None
     try:
-        from openai import OpenAI
+        from openai import BadRequestError, OpenAI
 
         settings = get_settings()
-        client = OpenAI(api_key=openai_api_key())
+        client = OpenAI(api_key=openai_api_key(), timeout=timeout) if timeout else OpenAI(
+            api_key=openai_api_key()
+        )
         prompt = load_prompt(prompt_name, variables)
 
+        chosen = model or settings.openai_llm_model
         for attempt in range(2):  # jeden retry (spec sekcja 8)
-            response = client.chat.completions.create(
-                model=settings.openai_llm_model,
+            request = dict(
+                model=chosen,
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
-                temperature=0.2 if attempt == 0 else 0.0,
             )
+            if chosen not in _NO_TEMPERATURE:
+                request["temperature"] = (0.2 if attempt == 0 else 0.0) if temperature is None else temperature
+            try:
+                response = client.chat.completions.create(**request)
+            except BadRequestError as e:
+                # nowsze modele przyjmują tylko domyślną temperaturę
+                if "temperature" not in str(e) or "temperature" not in request:
+                    raise
+                _NO_TEMPERATURE.add(chosen)
+                request.pop("temperature")
+                response = client.chat.completions.create(**request)
             raw = response.choices[0].message.content or ""
             try:
                 return schema.model_validate(json.loads(raw))
@@ -137,3 +162,50 @@ class GeneratedFollowUp(BaseModel):
     uniemożliwia zwrócenie czegokolwiek poza pytaniem."""
 
     question: str
+
+
+class GeneratedBankItem(BaseModel):
+    """Jedno zadanie do banku Grammar (patrz prompts/generate_grammar_items.md)."""
+
+    fmt: str  # 'guided' | 'situation' | 'translate' | 'fix' | 'personal'
+    prompt: str
+    cue: str = ""
+    hint: str = ""
+    model_answer: str
+    accepted_variants: list[str] = []
+
+
+class GeneratedBankItems(BaseModel):
+    items: list[GeneratedBankItem]
+
+
+class GradedAnswer(BaseModel):
+    """Ocena jednej mówionej odpowiedzi (patrz prompts/grade_grammar_answer.md)."""
+
+    verdict: str  # 'correct' | 'incorrect' | 'avoided' | 'unclear'
+    error_type: str = ""
+    explanation: str = ""
+    note_pl: str = ""
+    corrected: str = ""
+    reaction: str = ""
+
+
+class GeneratedShadowPassage(BaseModel):
+    title: str
+    text: str
+
+
+class TranscriptFinding(BaseModel):
+    """Jeden błąd z wklejonej rozmowy, przypisany do umiejętności z mapy."""
+
+    skill_id: str = ""
+    said: str
+    corrected: str
+    explanation: str = ""
+
+
+class TranscriptReview(BaseModel):
+    findings: list[TranscriptFinding] = []
+    # umiejętności użyte w rozmowie poprawnie i spontanicznie
+    used_well: list[str] = []
+    summary: str = ""

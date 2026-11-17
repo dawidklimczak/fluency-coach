@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     # Wartość z bazy (ekran ustawień) ma pierwszeństwo - patrz services/app_settings.py
     openai_api_key: str = ""
     openai_llm_model: str = "gpt-4o-mini"
+    # Grammar: zadania do banku powstają w tle, więc ten model może być wolniejszy;
+    # ocena jednej odpowiedzi (grade) musi wrócić w około sekundę
+    openai_grammar_model: str = "gpt-6-sol"
+    openai_grade_model: str = "gpt-4.1"
+    # rozpoznawanie krótkich odpowiedzi w rundach (bez znaczników czasu, szybsze niż whisper-1)
+    openai_answer_stt_model: str = "gpt-4o-mini-transcribe"
+    # Shadowing: synteza mowy (nagranie powstaje raz i zostaje na dysku)
+    openai_tts_model: str = "gpt-4o-mini-tts"
 
     # Hasło instancji. Puste = dozwolone tylko lokalnie (localhost).
     # Wystawienie na publiczny interfejs bez hasła jest odrzucane (fail closed).
@@ -36,6 +44,21 @@ class Settings(BaseSettings):
     @property
     def audio_dir(self) -> Path:
         return self.data_dir / "audio"
+
+    @property
+    def shadow_audio_dir(self) -> Path:
+        """Nagrania wzorcowe do shadowingu. Osobno od audio/, bo tamten katalog
+        sprząta retencja nagrań użytkownika."""
+        return self.data_dir / "shadow"
+
+    @property
+    def grammar_skills_path(self) -> Path:
+        return self.data_dir / "grammar_skills.json"
+
+    @property
+    def grammar_seed_items_path(self) -> Path:
+        """Startowy bank zadań dołączony do repo - pierwsza runda nie czeka na LLM."""
+        return self.data_dir / "grammar_seed_items.json"
 
     @property
     def language_config_path(self) -> Path:

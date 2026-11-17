@@ -16,6 +16,9 @@ dist/
 # Data
 data/app.db
 data/audio/
+data/shadow/
+# kopie zapasowe bazy użytkownika
+data/backup/
 # klucz podpisujący ciasteczka sesji - generowany lokalnie, nigdy w repo
 data/instance_key
 

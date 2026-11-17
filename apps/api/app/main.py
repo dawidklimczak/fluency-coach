@@ -13,10 +13,12 @@ from .routers import (
     calibrate,
     conversation,
     diagnostics,
+    grammar,
     profile,
     reading,
     recovery,
     settings as settings_router,
+    shadow,
     speaking_sessions,
     stats,
 )
@@ -96,6 +98,8 @@ app.include_router(speaking_sessions.router)
 app.include_router(diagnostics.router)
 app.include_router(recovery.router)
 app.include_router(conversation.router)
+app.include_router(grammar.router)
+app.include_router(shadow.router)
 
 
 @app.get("/api/health")

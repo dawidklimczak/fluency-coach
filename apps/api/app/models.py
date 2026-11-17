@@ -485,3 +485,179 @@ class SupportEvent(Base):
     direction: Mapped[str] = mapped_column(Text)  # 'up' | 'down'
     reason: Mapped[str] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+class GrammarSession(Base):
+    """Sesja ćwiczeń gramatycznych - świadomie OSOBNO od Attempt/FluencyMetrics.
+
+    Odpowiedzi są oceniane pod kątem poprawności struktury, a nie płynności,
+    więc nie mogą trafiać do statystyk mowy (tak samo jak ReadingAttempt).
+    Cały zestaw zadań z jednego requestu LLM leży w `plan`.
+    """
+
+    __tablename__ = "grammar_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[str] = mapped_column(Text)
+    structure_ids: Mapped[list] = mapped_column(JSON)
+    plan: Mapped[dict] = mapped_column(JSON)
+    # 'in_progress' | 'grading' | 'graded' | 'error'
+    status: Mapped[str] = mapped_column(Text, default="in_progress")
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+    ended_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class GrammarResult(Base):
+    """Jedna mówiona odpowiedź na zadanie + późniejsza ocena zbiorcza."""
+
+    __tablename__ = "grammar_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(Integer, ForeignKey("grammar_sessions.id"))
+    item_id: Mapped[str] = mapped_column(Text)
+    phase: Mapped[str] = mapped_column(Text)
+    # 'processing' | 'done' | 'error' (stan transkrypcji)
+    status: Mapped[str] = mapped_column(Text, default="processing")
+    transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # czy użytkownik odsłonił podpowiedź (kółka treningowe) przed odpowiedzią
+    hint_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 'correct' | 'incorrect' | 'avoided' | 'unclear' po ocenie zbiorczej
+    verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    corrected: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+# --- Grammar v2: mapa umiejętności, bank zadań, rundy ----------------------
+# GrammarSession / GrammarResult powyżej to stary model (jedna długa sesja
+# oceniana na końcu). Klasy zostają tylko po to, żeby stare wiersze dało się
+# odczytać - nowy kod ich nie używa.
+
+
+class GrammarSkill(Base):
+    """Stan jednej umiejętności (para znaczenie -> kształt zdania).
+
+    Opis umiejętności leży w data/grammar_skills.json; tu jest tylko postęp.
+    level: 0 nowa, 1 z pomocą, 2 samodzielnie, 3 pewnie, 4 trwale.
+    """
+
+    __tablename__ = "grammar_skills"
+
+    skill_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    streak: Mapped[int] = mapped_column(Integer, default=0)
+    lapses: Mapped[int] = mapped_column(Integer, default=0)
+    # indeks w REVIEW_INTERVALS (poziom 3) - ile powtórek po przerwie już się udało
+    interval_idx: Mapped[int] = mapped_column(Integer, default=0)
+    next_due: Mapped[str | None] = mapped_column(Text, nullable=True)  # data lokalna YYYY-MM-DD
+    last_seen: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    correct: Mapped[int] = mapped_column(Integer, default=0)
+    # ile razy użyta poprawnie we wklejonej rozmowie (most do subskrypcji)
+    wild_uses: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+class GrammarBankItem(Base):
+    """Jedno zadanie w banku. Rundy składają się z banku bez czekania na LLM."""
+
+    __tablename__ = "grammar_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    skill_id: Mapped[str] = mapped_column(Text, index=True)
+    # 'guided' | 'situation' | 'translate' | 'fix' | 'personal' | 'own'
+    fmt: Mapped[str] = mapped_column(Text)
+    prompt: Mapped[str] = mapped_column(Text)
+    cue: Mapped[str] = mapped_column(Text, default="")
+    hint: Mapped[str] = mapped_column(Text, default="")
+    model_answer: Mapped[str] = mapped_column(Text)
+    accepted_variants: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # 'seed' | 'generated' | 'transcript'
+    source: Mapped[str] = mapped_column(Text, default="generated")
+    times_shown: Mapped[int] = mapped_column(Integer, default=0)
+    last_shown: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+class GrammarRound(Base):
+    """Jedna runda (~8 zadań). plan = lista wpisów {item_id, skill_id, kind, fmt}."""
+
+    __tablename__ = "grammar_rounds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plan: Mapped[list] = mapped_column(JSON)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+    ended_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class GrammarAnswer(Base):
+    """Jedna mówiona odpowiedź, oceniona od razu po transkrypcji."""
+
+    __tablename__ = "grammar_answers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    round_id: Mapped[int] = mapped_column(Integer, ForeignKey("grammar_rounds.id"), index=True)
+    entry_index: Mapped[int] = mapped_column(Integer)
+    item_id: Mapped[int] = mapped_column(Integer, ForeignKey("grammar_items.id"))
+    skill_id: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(Text)  # probe | learn | practice | review | extra
+    fmt: Mapped[str] = mapped_column(Text)
+    # 'processing' | 'done' | 'error'
+    status: Mapped[str] = mapped_column(Text, default="processing")
+    transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hint_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    skipped: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 'correct' | 'incorrect' | 'avoided' | 'unclear'
+    verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note_pl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    corrected: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reaction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    level_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    level_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+# --- Shadowing ---------------------------------------------------------------
+
+
+class ShadowPassage(Base):
+    """Krótki tekst z nagraniem wzorcowym (synteza mowy) do mówienia razem z lektorem."""
+
+    __tablename__ = "shadow_passages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    skill_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    voice: Mapped[str] = mapped_column(Text)
+    audio_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # słowa tekstu z czasami w nagraniu wzorcowym: [{text, norm, start, end, sentence}]
+    words: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # zdania: [{index, text, start, end}]
+    sentences: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    times_used: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)
+
+
+class ShadowAttempt(Base):
+    """Jedno podejście do mówienia razem z nagraniem. Audio kasowane po analizie."""
+
+    __tablename__ = "shadow_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    passage_id: Mapped[int] = mapped_column(Integer, ForeignKey("shadow_passages.id"))
+    with_text: Mapped[bool] = mapped_column(Boolean, default=True)
+    speed: Mapped[float] = mapped_column(Float, default=1.0)
+    # 'processing' | 'done' | 'error'
+    status: Mapped[str] = mapped_column(Text, default="processing")
+    words: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=now_iso)

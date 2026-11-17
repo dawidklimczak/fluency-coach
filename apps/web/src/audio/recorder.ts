@@ -36,12 +36,17 @@ export class Recorder {
     this.stream = stream;
   }
 
-  static async create(): Promise<Recorder> {
+  /**
+   * autoGain: tylko dla rund gramatycznych i shadowingu. Tam liczy się, żeby
+   * cichy mikrofon dał się usłyszeć i rozpoznać, a nie dokładne pauzy. Moduły
+   * mierzące płynność zostają przy surowym sygnale (domyślnie false).
+   */
+  static async create(opts: { autoGain?: boolean } = {}): Promise<Recorder> {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
         noiseSuppression: false,
-        autoGainControl: false,
+        autoGainControl: opts.autoGain ?? false,
         channelCount: 1,
       },
     });

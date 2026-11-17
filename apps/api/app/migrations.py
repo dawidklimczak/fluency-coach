@@ -82,6 +82,7 @@ def _migrate_transfer_probes(conn: Connection) -> None:
 def run_migrations(engine) -> None:
     with engine.begin() as conn:
         _migrate_transfer_probes(conn)
+        _add_columns_if_missing(conn, "grammar_results", {"hint_used": "INTEGER DEFAULT 0"})
         _add_columns_if_missing(
             conn,
             "speaking_sessions",

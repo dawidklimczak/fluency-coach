@@ -17,10 +17,10 @@ sys.path.insert(0, str(TESTS_DIR.parent))
 # Izolacja: testy nie mogą dotykać bazy i nagrań użytkownika. DATA_DIR musi
 # być ustawione ZANIM cokolwiek zaimportuje app.db (silnik powstaje przy imporcie).
 _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="sat-tests-"))
-shutil.copy(
-    TESTS_DIR.parents[2] / "data" / "language_config.json",
-    _TEST_DATA_DIR / "language_config.json",
-)
+# pliki konfiguracyjne z repo; startowego banku zadań celowo NIE kopiujemy -
+# testy budują własny, mały bank
+for _name in ("language_config.json", "grammar_skills.json"):
+    shutil.copy(TESTS_DIR.parents[2] / "data" / _name, _TEST_DATA_DIR / _name)
 os.environ["DATA_DIR"] = str(_TEST_DATA_DIR)
 os.environ.pop("APP_PASSWORD", None)
 

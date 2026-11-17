@@ -510,7 +510,229 @@ export const api = {
 
   getConversation: (id: number) =>
     fetch(`/api/conversation/${id}`).then((r) => json<ConversationResult>(r)),
+
+  // --- Grammar: rundy, mapa, most do rozmów ---------------------------------
+
+  grammarHome: () => fetch("/api/grammar/home").then((r) => json<GrammarHome>(r)),
+
+  grammarMap: () => fetch("/api/grammar/map").then((r) => json<{ groups: SkillGroup[] }>(r)),
+
+  /** null = bank zadań jeszcze się generuje (HTTP 409) - ponów za chwilę */
+  createRound: async (): Promise<GrammarRoundDto | null> => {
+    const res = await fetch("/api/grammar/rounds", { method: "POST" });
+    if (res.status === 409) return null;
+    if (!res.ok && res.status !== 401) throw new Error(await errorMessage(res));
+    return json<GrammarRoundDto>(res);
+  },
+
+  submitRoundAnswer: (roundId: number, index: number, wav: Blob, hintUsed: boolean) =>
+    uploadAttempt<{ answer_id: number }>(`/api/grammar/rounds/${roundId}/answers`, wav, {
+      index,
+      hint_used: hintUsed,
+    }),
+
+  getRoundAnswer: (answerId: number) =>
+    fetch(`/api/grammar/answers/${answerId}`).then((r) => json<GrammarAnswerDto>(r)),
+
+  skipRoundEntry: (roundId: number, index: number) =>
+    postJson<GrammarAnswerDto>(`/api/grammar/rounds/${roundId}/skip`, { index }),
+
+  extraRoundEntry: (roundId: number, skillId: string) =>
+    postJson<{ entry: RoundEntry | null }>(`/api/grammar/rounds/${roundId}/extra`, {
+      skill_id: skillId,
+    }),
+
+  endRound: (roundId: number) =>
+    postJson<{ round_id: number; summary: RoundSummary; home: GrammarHome }>(
+      `/api/grammar/rounds/${roundId}/end`,
+      {}
+    ),
+
+  talkPrompt: () =>
+    fetch("/api/grammar/talk-prompt").then((r) =>
+      json<{ text: string; skills: { id: string; meaning: string }[] }>(r)
+    ),
+
+  reviewTranscript: (text: string) =>
+    postJson<TranscriptReview>("/api/grammar/transcript", { text }),
+
+  // --- Shadowing ----------------------------------------------------------------
+
+  shadowNext: async (excludeId?: number): Promise<ShadowPassage> => {
+    const res = await fetch(`/api/shadow/next${excludeId ? `?exclude=${excludeId}` : ""}`);
+    if (!res.ok && res.status !== 401) throw new Error(await errorMessage(res));
+    return json<ShadowPassage>(res);
+  },
+
+  submitShadowAttempt: (
+    passageId: number,
+    wav: Blob,
+    meta: { with_text: boolean; speed: number; offset_s: number }
+  ) =>
+    uploadAttempt<{ attempt_id: number }>(`/api/shadow/passages/${passageId}/attempts`, wav, meta),
+
+  getShadowAttempt: (attemptId: number) =>
+    fetch(`/api/shadow/attempts/${attemptId}`).then((r) => json<ShadowAttemptDto>(r)),
 };
+
+// --- Grammar ------------------------------------------------------------------
+
+export type LevelName = "new" | "learning" | "unaided" | "solid" | "mastered";
+
+export interface GrammarHome {
+  llm_ready: boolean;
+  bank_items: number;
+  total_skills: number;
+  counts: Record<LevelName, number>;
+  due_today: number;
+  in_progress: string[];
+  next_new: string | null;
+  week: { date: string; done: boolean }[];
+  week_days_done: number;
+  weekly_goal: number;
+  today_index: number;
+  answers_today: number;
+  answers_total: number;
+}
+
+export interface SkillDto {
+  id: string;
+  meaning: string;
+  pl: string;
+  pattern: string;
+  example: string;
+  name: string;
+  trap_pl: string;
+  level: number;
+  level_name: LevelName;
+  due: boolean;
+  next_due: string | null;
+  attempts: number;
+  correct: number;
+  wild_uses: number;
+}
+
+export interface SkillGroup {
+  id: string;
+  label: string;
+  skills: SkillDto[];
+}
+
+export type EntryKind = "probe" | "learn" | "practice" | "review" | "extra";
+export type EntryFormat = "guided" | "situation" | "translate" | "fix" | "personal" | "own";
+
+export interface RoundEntry {
+  index: number;
+  kind: EntryKind;
+  fmt: EntryFormat;
+  skill_id: string;
+  prompt: string;
+  cue: string;
+  hint: string;
+  show_pattern: boolean;
+  pattern: string;
+  meaning: string;
+  name: string;
+  model_answer: string;
+  accepted_variants: string[];
+}
+
+export interface GrammarRoundDto {
+  round_id: number;
+  entries: RoundEntry[];
+  summary: RoundSummary | null;
+}
+
+export type Verdict = "correct" | "incorrect" | "avoided" | "unclear";
+
+export interface GrammarAnswerDto {
+  answer_id: number;
+  status: "processing" | "done" | "error";
+  transcript: string | null;
+  latency_ms: number | null;
+  verdict: Verdict | null;
+  error_type: string | null;
+  explanation: string | null;
+  note_pl: string | null;
+  corrected: string | null;
+  reaction: string | null;
+  skill_id: string;
+  skill_label: string;
+  level_before: number | null;
+  level_after: number | null;
+}
+
+export interface RoundSummary {
+  answered: number;
+  graded: number;
+  correct: number;
+  moved: { skill_id: string; label: string; from: number; to: number; up: boolean }[];
+  to_revisit: { skill_id: string; label: string }[];
+  median_latency_ms: number | null;
+}
+
+export interface TranscriptReview {
+  findings: {
+    skill_id: string | null;
+    skill_label: string | null;
+    said: string;
+    corrected: string;
+    explanation: string;
+  }[];
+  used_well: { skill_id: string; label: string }[];
+  summary: string;
+}
+
+// --- Shadowing ----------------------------------------------------------------
+
+export interface ShadowWord {
+  text: string;
+  sentence: number;
+  start: number;
+  end: number;
+}
+
+export interface ShadowPassage {
+  passage_id: number;
+  title: string;
+  text: string;
+  duration_s: number;
+  audio_url: string;
+  words: ShadowWord[];
+  sentences: { index: number; text: string; start: number; end: number }[];
+  skills: string[];
+}
+
+export interface ShadowMetrics {
+  total_words: number;
+  said: number;
+  unclear: number;
+  missed: number;
+  coverage: number | null;
+  sentences: {
+    index: number;
+    words: number;
+    said: number;
+    coverage: number;
+    user_start: number | null;
+    user_end: number | null;
+  }[];
+  hardest_sentence: number | null;
+  lag_median_s: number | null;
+  lag_drift_s: number | null;
+  transcript_missing: boolean;
+}
+
+export interface ShadowAttemptDto {
+  attempt_id: number;
+  status: "processing" | "done" | "error";
+  with_text: boolean;
+  speed: number;
+  metrics: ShadowMetrics | null;
+  words:
+    | { text: string; sentence: number; status: "spoken" | "unclear" | "missed"; lag: number | null }[]
+    | null;
+}
 
 export interface ConversationWindow {
   start_s: number;
